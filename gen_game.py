@@ -224,24 +224,37 @@ def gen():
     o.append(f"QCOL:   ; napállás-kvantum (0..{G.Q_COUNT}) -> sáv oszlopa")
     o.append(db([(q * 7) // 8 for q in range(G.Q_COUNT + 1)]))
     o.append(sfx())
+    # közös felhőalakok (rx, ry szerint), a maszk formátuma a StampCloud-é
+    shapes = []
+    for L in G.LEVELS:
+        for c in L["clouds"]:
+            if (c["rx"], c["ry"]) not in shapes:
+                shapes.append((c["rx"], c["ry"]))
+    for k, (rx, ry) in enumerate(shapes):
+        ox, oy, rows = G.cloud_mask(dict(rx=rx, ry=ry))
+        o.append(f"SHAPE_{k}:  ; felhő rx={rx} ry={ry}: szélesség, magasság, ox, oy, maszk")
+        o.append(f"        db {2 * ox + 1},{2 * oy + 1},{ox},{oy}")
+        for r in rows:
+            o.append("        db " + ",".join(map(str, r)))
     o.append("LEVEL_TAB:")
     o.append("        dw " + ",".join(f"{L['name']}_DATA" for L in G.LEVELS))
     o.append(f"LEVEL_COUNT equ {len(G.LEVELS)}")
     for L in G.LEVELS:
         p, E = L["name"], EXTRA[L["name"]]
-        o.append(f"{p}_BASE:  ; 32x20 csempe-alap (0 talaj, 1 fa, egyébként csempeazonosító)")
-        o.append(db(base_map(L), 32))
         o.append(f"{p}_DATA:")
-        o.append(f"        dw {p}_CLASS,{p}_BASE,{p}_TITLE")
+        o.append(f"        dw {p}_TITLE")
         o.append(f"        db {E['start'][0]},{E['start'][1]},{L['gate'][0]},{L['gate'][1]},{E['q0']}")
-        o.append(f"        db {len(E['pkg'])}," + ",".join(f"{x},{y}" for x, y in E["pkg"]))
-        o.append(f"        db {len(L['clouds'])}")
-        for n, (c, x) in enumerate(zip(L["clouds"], E["cloud_x"])):
-            o.append(f"        dw {p}_CLOUD{n}")
+        o.append(f"        db {len(L['blds'])}   ; épületek: x, y, szélesség, magasság, árnyékosztály")
+        for x, y, w, h, hh in L["blds"]:
+            o.append(f"        db {x},{y},{w},{h},{G.HEIGHT_CLASS[hh]}")
+        o.append(f"        db {len(L['trees'])}," + ",".join(f"{x},{y}" for x, y in L["trees"]) + "   ; fák")
+        o.append(f"        db {len(E['pkg'])}," + ",".join(f"{x},{y}" for x, y in E["pkg"]) + "   ; csomagok")
+        o.append(f"        db {len(L['clouds'])}   ; felhők: alak, y, x (8.8)")
+        for c, x in zip(L["clouds"], E["cloud_x"]):
+            o.append(f"        dw SHAPE_{shapes.index((c['rx'], c['ry']))}")
             o.append(f"        db {c['y']}")
             o.append(f"        dw {int(round(x * 256)) & 0xFFFF}")
-            o.append(f"        db {-int(-c['rx'] // 1)}")      # ceil(rx)
-        o.append(f"        db {len(E['paths'])}")
+        o.append(f"        db {len(E['paths'])}   ; őrök: körbejár?, pontok száma, pontok")
         for loop, pts in E["paths"]:
             o.append(f"        db {1 if loop else 0},{len(pts)}," + ",".join(f"{x},{y}" for x, y in pts))
         o.append(f'{p}_TITLE: db "{E["title"]}",0')

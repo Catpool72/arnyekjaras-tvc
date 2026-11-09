@@ -1,4 +1,4 @@
-# ÁRNYÉKJÁRÁS – Videoton TVC 64K (v03)
+# ÁRNYÉKJÁRÁS – Videoton TVC 64K (v04)
 
 Saját játék, nem átirat. Lopakodás egy városban, ahol csak az árnyék véd: a nap keletről nyugatra halad, és az épületek, fák és a városfal árnyéka folyamatosan fordul és változik a hossza. A 3 csomagot kapuzárás (18:00) előtt kell kicsempészni. Az őrök csak a napon látnak meg.
 
@@ -74,11 +74,29 @@ A hosszú számítások (árnyékvetés soronként, képfrissítés soronként, 
 - `vision.asm`: az őrök látómezeje, előre kiszámolt Bresenham-utakkal. A látott cellák 3-as értékkel ugyanabba az árnyékpufferbe kerülnek, így a törlés is olcsó. Őrönként átlagosan kb. 38 000 ciklus.
 - A felhők 8.8 fixpontosan vonulnak, és csak akkor kérnek új árnyékot, amikor egész cellát léptek.
 
+## Pályaformátum
+
+Egy pálya kb. 150–165 bájt. A pályakezdéskor a `build_map` felépíti belőle az árnyékosztály-térképet (`CLASSBUF`) és a csempe-alapot (`BASEBUF`):
+
+```
+dw  név
+db  kezdő x, y, kapu x, y, napállás (0 = 6:00, 10 percenként)
+db  épületek száma, majd (x, y, szélesség, magasság, árnyékosztály)*
+db  fák száma, majd (x, y)*
+db  csomagok száma, majd (x, y)*
+db  felhők száma, majd (dw alak, db y, dw x 8.8)*     ; az alakok közösek
+db  őrök száma, majd (körbejár?, pontok száma, (x, y)*)*
+```
+
+A program a `$8000` alatt 17 847 bájtot hagy szabadon, ebbe még kb. 110 ekkora pálya fér.
+
+Új pálya felvétele: a `gen_tables.py` `LEVELS` listájába (kapu, épületek, fák, felhők) és a `gen_game.py` `EXTRA` szótárába (név, kezdőhely, indulási idő, csomagok, felhők kezdőhelye, őrök) kell beírni, utána `./build.sh`, `python3 solver.py` (megoldható-e, mennyi idő alatt), majd a tesztek.
+
 ## Memória (lapozás `$90` = U0 | U1 | VID | U3, mint a BLOKK 3D-ben)
 
-- `$19EF–` BASIC betöltő, kód, táblák (kb. 9,8 KB, `IMAGE_END` < `$8000`)
+- `$19EF–` BASIC betöltő, kód, táblák (8,3 KB, `IMAGE_END` < `$8000`)
 - `$8000–$BBFF` képernyő
-- `$C000` árnyékpuffer (64×38), `$CA00` takarási térkép, `$D400` csempe-alap, `$D700` kívánt csempék, `$DA00` kirajzolt csempék, `$DD00` változók, verem az U3 tetején
+- `$C000` árnyékpuffer (64×38), `$CA00` takarási térkép, `$D400` csempe-alap, `$D700` kívánt csempék, `$DA00` kirajzolt csempék, `$DD00` változók, `$E000` árnyékosztály-térkép, verem az U3 tetején
 
 ## Fordítás
 
@@ -95,7 +113,8 @@ gcc -O2 -I<z80-mappa> -o harness/tvcsim harness/tvcsim.c <z80-mappa>/z80.c
 python3 test_shadow.py   # táblás árnyékalgoritmus a demóhoz mérve: 864 eset
 python3 test_asm.py      # shadow.asm + vision.asm a z80sim-ben: 1344 eset, ciklusszámok
 python3 test_game.py     # a kész CAS a tvcsim-ben: árnyék/látómező 31 időpontban,
-                         # mozgás, lebukás, kapuzárás, győzelem + 2. pálya
+                         # mozgás, lebukás, kapuzárás, győzelem, pályaváltások,
+                         # a felépített térképek mindhárom pályán
 python3 test_sound.py    # SNDLOG alapján: mind a 11 effekt a várt eseménynél szól
 python3 solver.py        # leggyorsabb győztes út pályánként
 python3 test_replay.py   # a megoldó útja a kész CAS-on, mindhárom pályán kijut
@@ -110,8 +129,8 @@ A `harness/tvcsim.c` a BLOKK 3D tesztkörnyezete három kiegészítéssel:
 
 - `arnyek.asm` – főprogram: indítás és kilépés, főciklus, játéklogika, képfrissítés, kijelző, font
 - `shadow.asm`, `vision.asm` – árnyék- és látómező-modul
-- `gen_tables.py` – napállás-táblák, látómező-utak, pályák osztálytérképe és felhőmaszkjai
-- `gen_game.py` – csempék (32 × 20 bájt), 3×5-ös font, napszak-sáv, pályaleírók
+- `gen_tables.py` – napállás-táblák, látómező-utak, a pályák alapadatai; a `level*.inc` (kész osztálytérképek) csak a modultesztekhez kell
+- `gen_game.py` – csempék (32 × 20 bájt), 3×5-ös font, napszak-sáv, hangeffektek, közös felhőalakok, tömör pályaleírók
 - `z80sim.py` – kis Z80 asm-értelmező a modultesztekhez
 
 ## Ismert korlátok (v01)
@@ -122,6 +141,7 @@ A `harness/tvcsim.c` a BLOKK 3D tesztkörnyezete három kiegészítéssel:
 
 ## Változások
 
+- v04: tömör pályaformátum (épületlista, közös felhőalakok, futásidejű térképépítés); a program 11,8 KB-ról 8,3 KB-ra csökkent, pályánként kb. 150 bájt. A teszt a felépített térképeket is bájtra ellenőrzi.
 - v03: 3. pálya (Várudvar), 3 felhő. Javítva: a függőlegesen járőröző őrök a v01 óta egy helyben billegtek x-ben, ahelyett hogy fel-le jártak volna. Új: megoldó és végigjátszó teszt; a játékteszt az őrök helyét is ellenőrzi.
 - v02: hang.
 - v01: első változat, két pálya.

@@ -28,6 +28,7 @@ BASEBUF     equ $D400           ; 32x20, a pálya csempe-alapja
 DESIRED     equ $D700           ; 32x20, ennek kellene a képernyőn lennie  (= BASEBUF + $300)
 SHOWN       equ $DA00           ; 32x20, ez van most kirajzolva            (= DESIRED + $300)
 BSS         equ $DD00
+CLASSBUF    equ $E000           ; 32x20, a pálya árnyékosztály-térképe (build_map)
 
 ; csempeazonosítók (gen_game.py)
 T_GATE      equ 10
@@ -135,21 +136,13 @@ load_level:
         ld h,(hl)
         ld l,a                  ; HL = pályaleíró
         ld e,(hl) : inc hl : ld d,(hl) : inc hl
-        ld (class_ptr),de
-        ld e,(hl) : inc hl : ld d,(hl) : inc hl
-        push hl
-        ex de,hl
-        ld de,BASEBUF
-        ld bc,640
-        ldir
-        pop hl
-        ld e,(hl) : inc hl : ld d,(hl) : inc hl
         ld (title_ptr),de
         ld a,(hl) : inc hl : ld (px),a
         ld a,(hl) : inc hl : ld (py),a
         ld a,(hl) : inc hl : ld (gatex),a
         ld a,(hl) : inc hl : ld (gatey),a
         ld a,(hl) : inc hl : ld (q),a
+        call build_map          ; épületek és fák -> CLASSBUF, BASEBUF
         ; csomagok: n, (x,y)*n -> pkgs: x,y,felvéve
         ld a,(hl) : inc hl
         ld (npkg),a
@@ -159,7 +152,7 @@ load_level:
         ld a,(hl) : ld (de),a : inc hl : inc de
         xor a : ld (de),a : inc de
         djnz .pk
-        ; felhők: n, (dw maszk, db y, dw x 8.8, db rx)*n
+        ; felhők: n, (dw alak, db y, dw x 8.8)*n; rx = az alak ox mezője
         ld a,(hl) : inc hl
         ld (ncloud),a
         ld b,a
@@ -169,7 +162,14 @@ load_level:
         ld a,(hl) : ld (ix+C_Y),a : inc hl
         ld a,(hl) : ld (ix+C_X),a : inc hl
         ld a,(hl) : ld (ix+C_X+1),a : inc hl
-        ld a,(hl) : ld (ix+C_RX),a : inc hl
+        push hl
+        ld l,(ix+C_MASK)
+        ld h,(ix+C_MASK+1)
+        inc hl
+        inc hl
+        ld a,(hl)
+        ld (ix+C_RX),a
+        pop hl
         ld de,C_SIZE
         add ix,de
         djnz .cl
@@ -211,10 +211,157 @@ load_level:
         ld (hud_q),a
         ld (hud_bar_q),a
         ld (hud_got),a
-        ld hl,(class_ptr)
+        ld hl,CLASSBUF
         call TerrainBuild
         ld a,1
         ld (need_shadow),a
+        ret
+
+; build_map: HL = a pályaleíró épületlistája. Felépíti az árnyékosztály-
+; térképet (CLASSBUF: fal 3, épület 1/3/4/5, fa 2) és a csempe-alapot
+; (BASEBUF). Kilépéskor HL a fák utáni adatra mutat.
+build_map:
+        push hl
+        ld hl,CLASSBUF
+        ld de,CLASSBUF+1
+        ld bc,639
+        ld (hl),0
+        ldir
+        ld a,3                  ; városfal: 2 magas, 3-as osztály
+        call border_fill
+        pop hl
+        ld a,(hl)               ; épületek
+        inc hl
+        or a
+        jr z,.nob
+        ld b,a
+.b:     push bc
+        ld b,(hl) : inc hl
+        ld c,(hl) : inc hl
+        ld d,(hl) : inc hl
+        ld e,(hl) : inc hl
+        ld a,(hl) : inc hl
+        push hl
+        call fill_rect
+        pop hl
+        pop bc
+        djnz .b
+.nob:   ld a,(hl)               ; fák
+        inc hl
+        or a
+        jr z,.not
+        ld b,a
+.t:     push bc
+        ld b,(hl) : inc hl
+        ld c,(hl) : inc hl
+        push hl
+        call cls_addr
+        ld (hl),2
+        pop hl
+        pop bc
+        djnz .t
+.not:   push hl
+        ld a,(gatex) : ld b,a
+        ld a,(gatey) : ld c,a
+        call cls_addr
+        ld (hl),0               ; a kapu járható
+        ; csempe-alap az osztályokból
+        ld hl,CLASSBUF
+        ld de,BASEBUF
+        ld bc,640
+.c:     ld a,(hl)
+        push hl
+        ld hl,CLS2BASE
+        add a,l
+        ld l,a
+        jr nc,.c1
+        inc h
+.c1:    ld a,(hl)
+        pop hl
+        ld (de),a
+        inc hl
+        inc de
+        dec bc
+        ld a,b
+        or c
+        jr nz,.c
+        ld a,4                  ; fal-csempe a szélen
+        ld hl,BASEBUF
+        call border_fill_hl
+        ld a,(gatex) : ld b,a
+        ld a,(gatey) : ld c,a
+        call cls_addr
+        ld de,BASEBUF-CLASSBUF
+        add hl,de
+        ld (hl),T_GATE
+        pop hl
+        ret
+
+CLS2BASE:   db 0,5,1,6,7,8          ; osztály -> csempe (0 talaj, 1 fa, 5..8 tető)
+
+; border_fill: A = érték a CLASSBUF szélső celláiba (border_fill_hl: HL = puffer)
+border_fill:
+        ld hl,CLASSBUF
+border_fill_hl:
+        push hl
+        ld b,32
+.t:     ld (hl),a
+        inc hl
+        djnz .t
+        ld de,18*32
+        add hl,de
+        ld b,32
+.bt:    ld (hl),a
+        inc hl
+        djnz .bt
+        pop hl
+        ld b,20
+        ld de,31
+.s:     ld (hl),a
+        add hl,de
+        ld (hl),a
+        inc hl
+        djnz .s
+        ret
+
+; fill_rect: B = x, C = y, D = szélesség, E = magasság, A = érték (CLASSBUF)
+fill_rect:
+        push af
+        call cls_addr
+        pop af
+        ld c,e
+.r:     push hl
+        ld b,d
+.x:     ld (hl),a
+        inc hl
+        djnz .x
+        pop hl
+        push af
+        ld a,l
+        add a,32
+        ld l,a
+        jr nc,.nc
+        inc h
+.nc:    pop af
+        dec c
+        jr nz,.r
+        ret
+
+; cls_addr: B = x, C = y -> HL = CLASSBUF + y*32 + x (rontja A)
+cls_addr:
+        ld l,c
+        ld h,0
+        add hl,hl
+        add hl,hl
+        add hl,hl
+        add hl,hl
+        add hl,hl
+        ld a,l
+        add a,b
+        ld l,a
+        ld a,h
+        adc a,CLASSBUF/256
+        ld h,a
         ret
 
 ; redraw_all: teljes képernyő-újrarajzolás (törlés, minden cella, kijelző)
@@ -696,7 +843,7 @@ update_world:
         cp Q_END
         jr c,.qok
         ld a,Q_END-1            ; a napállás-tábla 0..71
-.qok:   ld hl,(class_ptr)
+.qok:   ld hl,CLASSBUF
         call ShadowCast
         ld a,1
         ld (need_vision),a
@@ -1369,9 +1516,6 @@ ShadowRowHook equ snd_poll
         include "vision.asm"
         include "suntab.inc"
         include "vistab.inc"
-        include "level1.inc"
-        include "level2.inc"
-        include "level3.inc"
         include "game.inc"
 
 IMAGE_END:
@@ -1419,7 +1563,6 @@ hud_status  ds 1
 hud_q       ds 1
 hud_bar_q   ds 1
 hud_got     ds 1
-class_ptr   ds 2
 title_ptr   ds 2
 keys        ds 2
 kprev       ds 2

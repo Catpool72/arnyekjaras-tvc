@@ -185,6 +185,25 @@ def main():
     print(f"6. 3. pálya kezdőképe {'OK' if not check_world(s3) else 'HIBA'}, megnyerése: állapot={sw['state']}, "
           f"utána pálya={s1['level'] + 1} állapot={s1['state']} -> {'OK' if ok else 'HIBA'}")
 
+    # --- 7. a pályakezdéskor felépített térképek (CLASSBUF, BASEBUF) mindhárom pályán
+    import gen_game as GG
+    for i, L in enumerate(G.LEVELS):
+        sc = []
+        if i:
+            sc = [f"poke 40 {SYM['level']} {i - 1}", f"poke 40 {SYM['state']} 1",
+                  f"key 42 {ROW_SPACE} {BIT_SPACE}", f"key 46 {ROW_SPACE} 0"]
+        f = 90
+        sc += [f"dump {f} {SYM['level']} 1"] + [f"dump {f} {SYM['CLASSBUF'] + y * 32} 32" for y in range(H)] + \
+              [f"dump {f} {SYM['BASEBUF'] + y * 32} 32" for y in range(H)]
+        d = run(sc, f + 2)
+        cls = [b for y in range(H) for b in d[(f, SYM['CLASSBUF'] + y * 32)]]
+        base = [b for y in range(H) for b in d[(f, SYM['BASEBUF'] + y * 32)]]
+        hgt = G.height_map(L)
+        want_cls = [G.HEIGHT_CLASS.get(hgt[y][x], 0) for y in range(H) for x in range(W)]
+        ok = d[(f, SYM['level'])][0] == i and cls == want_cls and base == GG.base_map(L)
+        fails += not ok
+        print(f"7. {i + 1}. pálya felépített térképei: {'OK' if ok else 'HIBA'}")
+
     print("MINDEN TESZT RENDBEN" if not fails else f"{fails} HIBA")
     return fails == 0
 
