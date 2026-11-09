@@ -1,5 +1,5 @@
 ;=============================================================================
-; ÁRNYÉKJÁRÁS  –  Videoton TV-Computer 64K, 16 színű mód (128x240)   v05
+; ÁRNYÉKJÁRÁS  –  Videoton TV-Computer 64K, 16 színű mód (128x240)   v06
 ; Z80 @ 3.125 MHz, sjasmplus.  Indítás: 10 PRINT USR(6659), automatikusan.
 ;
 ; Memória (lapozás $90 = U0 | U1 | VID | U3):
@@ -110,6 +110,8 @@ new_game:
         ld (level),a
         ld hl,0
         ld (score),hl
+        ld (score+2),a          ; A = 0 (24 bites pontszám)
+        ld (completed),a
         ld a,LIVES
         ld (lives),a
         jp level_intro
@@ -625,7 +627,7 @@ player_move:
         jp nz,.nogate
         ld a,(gatey)
         cp e
-        jr nz,.nogate
+        jp nz,.nogate
         ld a,(allgot)
         or a
         jr nz,.win
@@ -644,31 +646,34 @@ player_move:
         ld a,1
         ld (need_redraw),a
         call update_world
-        call level_score        ; HL = a pálya pontja
-        ld (last_pts),hl
-        ld de,(score)
+        call level_score        ; last_pts = a pálya pontja (24 bit)
+        ld hl,(score)           ; score += last_pts
+        ld de,(last_pts)
         add hl,de
-        jr nc,.sc
-        ld hl,$FFFF
-.sc:    ld (score),hl
+        ld (score),hl
+        ld a,(score+2)
+        ld hl,last_pts+2
+        adc a,(hl)
+        ld (score+2),a
         ld a,1
         ld (hud_sc),a
         ld hl,SFX_WIN
         ld a,7
         call snd_play
-        ; összesítő: "KIJUTOTTAL! +nnnnn" (az utolsó pályán "VEGIGJATSZOTTAD!")
+        ; összesítő: "KIJUTOTTAL! +nnnnnnn"
         ld a,(level)
         inc a
         cp LEVEL_COUNT
-        ld hl,txt_won
         jr c,.w1
-        ld hl,txt_done
-.w1:    ld de,msgbuf
+        ld a,1
+        ld (completed),a        ; végigjátszotta
+.w1:    ld hl,txt_won
+        ld de,msgbuf
         call strcpy
         ld hl,txt_plus
         call strcpy
-        ld hl,(last_pts)
-        call num5
+        ld hl,last_pts
+        call num7
         xor a
         ld (de),a
         ld a,ST_WON
@@ -792,23 +797,35 @@ lose:
 game_over:
         ld a,ST_OVER
         ld (state),a
-        ld hl,(score)
-        ld de,(hiscore)
+        ld hl,score             ; hiscore - score: átvitel = új rekord
+        ld a,(hiscore)
+        sub (hl)
+        inc hl
+        ld a,(hiscore+1)
+        sbc a,(hl)
+        inc hl
+        ld a,(hiscore+2)
+        sbc a,(hl)
+        jr c,.rec
+        ld a,(completed)
         or a
-        sbc hl,de
         ld hl,txt_over
         ld c,10
-        jr c,.go                ; nincs új rekord
         jr z,.go
-        ld hl,(score)
+        ld hl,txt_congrats      ; végigjátszotta, de nem rekord
+        ld c,13
+        jr .go
+.rec:   ld hl,(score)
         ld (hiscore),hl
+        ld a,(score+2)
+        ld (hiscore+2),a
         ld hl,txt_record
         ld c,14
 .go:    push bc
         ld de,msgbuf
         call strcpy
-        ld hl,(score)
-        call num5
+        ld hl,score
+        call num7
         xor a
         ld (de),a
         pop bc
@@ -817,7 +834,7 @@ game_over:
         ld de,txt_space
         jp show_msg2
 
-; level_score: HL = (csomagok*100 + hátralévő perc*5 + árnyékbónusz) * (pálya+1)
+; level_score: last_pts (24 bit) = (csomagok*100 + hátralévő perc*5 + árnyékbónusz) * (pálya+1)
 level_score:
         ld a,Q_END
         ld hl,q
@@ -866,14 +883,20 @@ level_score:
         ex de,hl
         pop hl
         add hl,de
-.nb:    ld a,(level)
+.nb:    ld c,0                  ; C:HL = 24 bites eredmény
+        ld a,(level)
         or a
-        ret z
+        jr z,.st
         ld b,a
         ld d,h
         ld e,l
 .m:     add hl,de               ; * (pálya+1)
-        djnz .m
+        jr nc,.mc
+        inc c
+.mc:    djnz .m
+.st:    ld (last_pts),hl
+        ld a,c
+        ld (last_pts+2),a
         ret
 
 ; strcpy: HL -> DE a 0-ig; DE a záró 0 helyére mutat (azt is beírja)
@@ -886,29 +909,57 @@ strcpy:
         inc de
         jr strcpy
 
-; num5: HL -> 5 decimális számjegy DE-re; DE utánuk
-num5:
-        ld bc,-10000
-        call .d
-        ld bc,-1000
-        call .d
-        ld bc,-100
-        call .d
-        ld bc,-10
-        call .d
-        ld a,l
-        add a,'0'
+; num7: HL = 24 bites szám címe -> 7 decimális számjegy DE-re; DE utánuk
+num7:
+        ld c,(hl)
+        inc hl
+        ld a,(hl)
+        inc hl
+        ld b,(hl)
+        ld h,b                  ; B:A:C -> C:HL (C = felső bájt)
+        ld l,c
+        ld c,h
+        ld h,a
+        ld ix,POW7
+        ld b,7
+.n:     ld a,'0'
         ld (de),a
-        inc de
-        ret
-.d:     ld a,'0'-1
-.l:     inc a
-        add hl,bc
-        jr c,.l
-        sbc hl,bc
+.l:     ld a,l                  ; C:HL -= 10^k
+        sub (ix+0)
+        ld l,a
+        ld a,h
+        sbc a,(ix+1)
+        ld h,a
+        ld a,c
+        sbc a,(ix+2)
+        ld c,a
+        jr c,.u
+        ld a,(de)
+        inc a
         ld (de),a
+        jr .l
+.u:     ld a,l                  ; visszaadás
+        add a,(ix+0)
+        ld l,a
+        ld a,h
+        adc a,(ix+1)
+        ld h,a
+        ld a,c
+        adc a,(ix+2)
+        ld c,a
         inc de
+        inc ix
+        inc ix
+        inc ix
+        djnz .n
         ret
+POW7:   dw 1000000 & $FFFF : db 1000000 >> 16
+        dw 100000 & $FFFF  : db 100000 >> 16
+        dw 10000           : db 0
+        dw 1000            : db 0
+        dw 100             : db 0
+        dw 10              : db 0
+        dw 1               : db 0
 
 end_msg:
         push hl
@@ -1375,13 +1426,13 @@ draw_clock:
         ld de,VRAM+HUD_Y1*64
         jp print_str
 
-; draw_score: "PONT:nnnnn" és "ELET:n"
+; draw_score: "P:nnnnnnn" és "ELET:n"
 draw_score:
         ld a,15
         call set_ink
-        ld de,score_buf+5
-        ld hl,(score)
-        call num5
+        ld de,score_buf+2
+        ld hl,score
+        call num7
         ld hl,score_buf
         ld de,VRAM+HUD_Y1*64+12
         call print_str
@@ -1395,7 +1446,7 @@ draw_score:
         ld a,10                 ; utolsó élet: piros
 .i:     call set_ink
         ld hl,lives_buf
-        ld de,VRAM+HUD_Y1*64+34
+        ld de,VRAM+HUD_Y1*64+32
         jp print_str
 
 draw_got:
@@ -1555,7 +1606,7 @@ ink_byte:
 SPREAD: db 0,1,4,5,16,17,20,21,64,65,68,69,80,81,84,85
 clk_buf:    db "00:00",0
 got_buf:    db "CS:0/3",0
-score_buf:  db "PONT:00000",0
+score_buf:  db "P:0000000",0
 lives_buf:  db "ELET:3",0
 
 txt_space:  db " - SZOKOZ",0
@@ -1568,7 +1619,7 @@ txt_seen:   db "ESZREVETT AZ OR!",0
 txt_bump:   db "BELEBOTLOTT AZ OR!",0
 txt_closed: db "BEZARTAK A KAPUT!",0
 txt_won:    db "KIJUTOTTAL!",0
-txt_done:   db "VEGIGJATSZOTTAD!",0
+txt_congrats: db "GRATULALOK! ",0
 txt_plus:   db " +",0
 txt_over:   db "JATEK VEGE! ",0
 txt_record: db "UJ REKORD! ",0
@@ -1788,9 +1839,10 @@ keys        ds 2
 kprev       ds 2
 knew        ds 2
 ink_tbl     ds 4
-score       ds 2
-hiscore     ds 2
-last_pts    ds 2
+score       ds 3
+hiscore     ds 3
+last_pts    ds 3
+completed   ds 1
 lives       ds 1
 litsteps    ds 1
 hud_sc      ds 1

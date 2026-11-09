@@ -1,4 +1,4 @@
-# ÁRNYÉKJÁRÁS – Videoton TVC 64K (v05)
+# ÁRNYÉKJÁRÁS – Videoton TVC 64K (v06)
 
 Saját játék, nem átirat. Lopakodás egy városban, ahol csak az árnyék véd: a nap keletről nyugatra halad, és az épületek, fák és a városfal árnyéka folyamatosan fordul és változik a hossza. A 3 csomagot kapuzárás (18:00) előtt kell kicsempészni. Az őrök csak a napon látnak meg.
 
@@ -47,8 +47,9 @@ Pálya végén: **(csomagok × 100 + a kapuzárásig hátralévő játékpercek 
 
 - Az árnyékbónusz 300 pont, ami minden napos mezőre tett lépéssel 10 ponttal csökken (legfeljebb 0-ig). Egy lépés akkor napos, ha a lépés pillanatában napos mezőre visz. Egy napos lépés 2 játékperc időbónuszt ér, ezért a gyorsaság és az árnyékban maradás valódi döntés.
 - 3 élet. Lebukáskor vagy kapuzáráskor elvész egy, és a pálya újrakezdődik. A pontok csak a sikeres pályák után járnak, így a megszerzett pontok megmaradnak.
-- Ha elfogynak az életek, vagy az utolsó pálya is kész: JATEK VEGE vagy UJ REKORD, szóközre új játék. A rekord a munkamenetre szól, mint a BLOKK 3D-ben.
-- Kijelző: `07:00 PONT:00000 ELET:3 CS:0/3`. Az utolsó élet piros, pálya végén az állapotsorban az összesítő látszik (`KIJUTOTTAL! +06100`).
+- Ha elfogynak az életek: JATEK VEGE; ha az utolsó pálya is kész: GRATULALOK; új rekordnál mindkét esetben UJ REKORD. Szóközre új játék. A rekord a munkamenetre szól, mint a BLOKK 3D-ben.
+- A pontszám, a rekord és a pályánkénti pont 24 bites (legfeljebb 16 777 215), így a pályaszorzóval kb. 88 pályáig akkor sem telik be, ha minden pályán az elméleti maximumot (4200 alappont) éred el.
+- Kijelző: `07:00 P:0000000 ELET:3 CS:0/3`. Az utolsó élet piros, pálya végén az állapotsorban az összesítő látszik (`KIJUTOTTAL! +06100`).
 
 A megoldó (`python3 solver.py --pont`) szerint elérhető legjobb pontszámok:
 
@@ -106,13 +107,13 @@ db  felhők száma, majd (dw alak, db y, dw x 8.8)*     ; az alakok közösek
 db  őrök száma, majd (körbejár?, pontok száma, (x, y)*)*
 ```
 
-A program a `$8000` alatt 17 847 bájtot hagy szabadon, ebbe még kb. 110 ekkora pálya fér.
+A program a `$8000` alatt 17 329 bájtot hagy szabadon, ebbe még kb. 106–118 ekkora pálya fér.
 
 Új pálya felvétele: a `gen_tables.py` `LEVELS` listájába (kapu, épületek, fák, felhők) és a `gen_game.py` `EXTRA` szótárába (név, kezdőhely, indulási idő, csomagok, felhők kezdőhelye, őrök) kell beírni, utána `./build.sh`, `python3 solver.py` (megoldható-e, mennyi idő alatt), majd a tesztek.
 
 ## Memória (lapozás `$90` = U0 | U1 | VID | U3, mint a BLOKK 3D-ben)
 
-- `$19EF–` BASIC betöltő, kód, táblák (8,3 KB, `IMAGE_END` < `$8000`)
+- `$19EF–` BASIC betöltő, kód, táblák (8,6 KB, `IMAGE_END` < `$8000`)
 - `$8000–$BBFF` képernyő
 - `$C000` árnyékpuffer (64×38), `$CA00` takarási térkép, `$D400` csempe-alap, `$D700` kívánt csempék, `$DA00` kirajzolt csempék, `$DD00` változók, `$E000` árnyékosztály-térkép, verem az U3 tetején
 
@@ -162,6 +163,7 @@ A `harness/tvcsim.c` a BLOKK 3D tesztkörnyezete három kiegészítéssel:
 
 ## Változások
 
+- v06: 24 bites pontszám, rekord és pályapont, 7 számjegy (`P:0000000`); végigjátszás után GRATULALOK. A teszt a 65 535 fölötti összeadást és rekordot is ellenőrzi.
 - v05: pontozás (csomag, időbónusz, fokozatos árnyékbónusz, pályaszorzó), 3 élet, játék vége, munkamenet-rekord; „+” a fontban. Javítva: kapuzáráskor 18:09-et mutatott az óra; a napszak-sáv jele csonkokat hagyott.
 - v04: tömör pályaformátum (épületlista, közös felhőalakok, futásidejű térképépítés); a program 11,8 KB-ról 8,3 KB-ra csökkent, pályánként kb. 150 bájt. A teszt a felépített térképeket is bájtra ellenőrzi.
 - v03: 3. pálya (Várudvar), 3 felhő. Javítva: a függőlegesen járőröző őrök a v01 óta egy helyben billegtek x-ben, ahelyett hogy fel-le jártak volna. Új: megoldó és végigjátszó teszt; a játékteszt az őrök helyét is ellenőrzi.

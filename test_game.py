@@ -175,14 +175,21 @@ def main():
              [f"key 100 {ROW_SPACE} {BIT_SPACE}", f"key 102 {ROW_SPACE} 0",
               f"poke 110 {pk + 2} 1", f"poke 110 {pk + 5} 1", f"poke 110 {pk + 8} 1",
               f"poke 110 {SYM['allgot']} 1", f"poke 110 {SYM['got_n']} 3",
+              f"poke 110 {SYM['score']} {65000 & 255}", f"poke 110 {SYM['score'] + 1} {65000 >> 8}",
               f"poke 110 {SYM['px']} 30", f"poke 110 {SYM['py']} 10", f"poke 110 {SYM['gacc']} 0",
               f"key 112 {ROW_CUR} {BIT_RIGHT}", f"key 116 {ROW_CUR} 0", "shot 125 done.ppm"] + dump_state(125) + \
+             [f"dump 125 {SYM['score']} 3", f"dump 125 {SYM['last_pts']} 3"] + \
              [f"key 140 {ROW_SPACE} {BIT_SPACE}", f"key 144 {ROW_SPACE} 0"] + dump_state(150) + \
+             [f"dump 150 {SYM['hiscore']} 3", "shot 150 record.ppm"] + \
              [f"key 160 {ROW_SPACE} {BIT_SPACE}", f"key 164 {ROW_SPACE} 0"] + dump_state(210)
     d = run(script, 212)
     s3, sw, so, s1 = state_at(d, 90), state_at(d, 125), state_at(d, 150), state_at(d, 210)
+    b3 = lambda f, n: d[(f, SYM[n])][0] | d[(f, SYM[n])][1] << 8 | d[(f, SYM[n])][2] << 16
+    sc, lp, hs = b3(125, "score"), b3(125, "last_pts"), b3(150, "hiscore")
+    ok24 = sc == 65000 + lp and sc > 65535 and hs == sc
+    print(f"   24 bites pontszám: 65000 + {lp} = {sc}, rekord {hs} -> {'OK' if ok24 else 'HIBA'}")
     ok = s3["level"] == 2 and not check_world(s3) and sw["state"] == 1 and so["state"] == 4 and \
-         s1["level"] == 0 and s1["state"] == 3
+         s1["level"] == 0 and s1["state"] == 3 and ok24
     fails += not ok
     print(f"6. 3. pálya kezdőképe {'OK' if not check_world(s3) else 'HIBA'}, megnyerése: állapot={sw['state']}, "
           f"szóközre játék vége ({so['state']}), újabb szóközre pálya={s1['level'] + 1} állapot={s1['state']} "
@@ -212,13 +219,14 @@ def main():
         return [f"poke {f} {SYM['q']} 71", f"poke {f} {SYM['mm']} 9", f"poke {f} {SYM['sub']} 11"]
     def space(f):
         return [f"key {f} {ROW_SPACE} {BIT_SPACE}", f"key {f + 3} {ROW_SPACE} 0"]
-    rd = lambda f, n: [f"dump {f} {SYM[n]} 2"]
+    rd = lambda f, n: [f"dump {f} {SYM[n]} 3"]
     script = space(30) + timeout(40) + rd(55, "lives") + space(60) + timeout(110) + rd(125, "lives") + \
-             space(130) + [f"poke 180 {SYM['score']} {1234 & 255}", f"poke 180 {SYM['score'] + 1} {1234 >> 8}"] + \
+             space(130) + [f"poke 180 {SYM['score']} {1234 & 255}", f"poke 180 {SYM['score'] + 1} {1234 >> 8}",
+                           f"poke 180 {SYM['score'] + 2} 0"] + \
              timeout(181) + rd(200, "hiscore") + dump_state(200) + ["shot 200 gameover.ppm"] + \
              space(210) + dump_state(260) + rd(260, "score") + rd(260, "lives") + rd(260, "hiscore")
     d = run(script, 262)
-    w = lambda f, n: d[(f, SYM[n])][0] | d[(f, SYM[n])][1] << 8
+    w = lambda f, n: d[(f, SYM[n])][0] | d[(f, SYM[n])][1] << 8 | d[(f, SYM[n])][2] << 16
     l1, l2 = d[(55, SYM["lives"])][0], d[(125, SYM["lives"])][0]
     so, sn = state_at(d, 200), state_at(d, 260)
     ok = (l1, l2) == (2, 1) and so["state"] == 4 and w(200, "hiscore") == 1234 and \

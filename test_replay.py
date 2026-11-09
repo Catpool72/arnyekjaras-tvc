@@ -48,7 +48,7 @@ def main():
         d = run(sc, end * 8 + 400, iters=True)
         st = state_at(d, end + 20)
         sb = d[(end + 20, SYM["score"])]
-        got_score = sb[0] | sb[1] << 8
+        got_score = sb[0] | sb[1] << 8 | sb[2] << 16
         want_score, lit = S.path_score(r)
         ok = st["state"] == 1 and st["level"] == idx and got_score == want_score
         fails += not ok
