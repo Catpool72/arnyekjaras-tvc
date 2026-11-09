@@ -1,4 +1,4 @@
-# ÁRNYÉKJÁRÁS – Videoton TVC 64K (v04)
+# ÁRNYÉKJÁRÁS – Videoton TVC 64K (v05)
 
 Saját játék, nem átirat. Lopakodás egy városban, ahol csak az árnyék véd: a nap keletről nyugatra halad, és az épületek, fák és a városfal árnyéka folyamatosan fordul és változik a hossza. A 3 csomagot kapuzárás (18:00) előtt kell kicsempészni. Az őrök csak a napon látnak meg.
 
@@ -41,10 +41,28 @@ A `solver.py` a játék pontos időzítésével (játékperc 12, őrlépés 22, 
 
 A `test_replay.py` a megoldó útját billentyűleütésekké alakítja, és a kész CAS-on végigjátssza a tvcsim-ben: mindhárom pályán kijut.
 
+## Pontozás és életek
+
+Pálya végén: **(csomagok × 100 + a kapuzárásig hátralévő játékpercek × 5 + árnyékbónusz) × a pálya sorszáma**.
+
+- Az árnyékbónusz 300 pont, ami minden napos mezőre tett lépéssel 10 ponttal csökken (legfeljebb 0-ig). Egy lépés akkor napos, ha a lépés pillanatában napos mezőre visz. Egy napos lépés 2 játékperc időbónuszt ér, ezért a gyorsaság és az árnyékban maradás valódi döntés.
+- 3 élet. Lebukáskor vagy kapuzáráskor elvész egy, és a pálya újrakezdődik. A pontok csak a sikeres pályák után járnak, így a megszerzett pontok megmaradnak.
+- Ha elfogynak az életek, vagy az utolsó pálya is kész: JATEK VEGE vagy UJ REKORD, szóközre új játék. A rekord a munkamenetre szól, mint a BLOKK 3D-ben.
+- Kijelző: `07:00 PONT:00000 ELET:3 CS:0/3`. Az utolsó élet piros, pálya végén az állapotsorban az összesítő látszik (`KIJUTOTTAL! +06100`).
+
+A megoldó (`python3 solver.py --pont`) szerint elérhető legjobb pontszámok:
+
+| Pálya | Leggyorsabb úton | Legjobb | Hogyan |
+|---|---|---|---|
+| Déli kapu | 3675 (10 napos lépés) | 3715 | 7:26-kor, 6 napos lépéssel |
+| Piactér | 6100 (39 napos lépés) | 6160 | 8:51-kor, 27 napos lépéssel |
+| Várudvar | 2445 (30 napos lépés) | 3105 | 16:17-kor, 8 napos lépéssel |
+| **Összesen** | | **12 980** | |
+
 ## Képernyő
 
 - A pálya 32×20 cella, cellánként 4×10 képpont (2 bájt × 10 sor), ez nagyjából négyzetes a TVC széles képpontjaival.
-- Alatta 40 sor: óra (17:00-tól piros), pályanév, csomagszámláló, napszak-sáv a nappal és a kapuzárás jelével, valamint állapotsor (NAPON / ARNYEKBAN / FELHO ALATT / VARAKOZAS, illetve üzenetek).
+- Alatta 40 sor: óra (17:00-tól piros), pontszám, életek, csomagszámláló, napszak-sáv a nappal és a kapuzárás jelével, valamint állapotsor (NAPON / ARNYEKBAN / FELHO ALATT / VARAKOZAS, illetve üzenetek).
 - Cellás frissítés: a program kiszámolja, minek kellene a képernyőn lennie (`DESIRED`), és csak azokat a cellákat rajzolja újra, amelyek eltérnek a kirajzolttól (`SHOWN`).
 - Bitkiosztás 16 színű módban: a bal képpont a páratlan bitekben (b7=I, b5=G, b3=R, b1=B), a jobb a párosakban. Ez az ep128emu `tvcvideo.cpp` alapján készült, amelyre az Ep128web is épül.
 
@@ -114,10 +132,13 @@ python3 test_shadow.py   # táblás árnyékalgoritmus a demóhoz mérve: 864 es
 python3 test_asm.py      # shadow.asm + vision.asm a z80sim-ben: 1344 eset, ciklusszámok
 python3 test_game.py     # a kész CAS a tvcsim-ben: árnyék/látómező 31 időpontban,
                          # mozgás, lebukás, kapuzárás, győzelem, pályaváltások,
-                         # a felépített térképek mindhárom pályán
+                         # a felépített térképek mindhárom pályán,
+                         # életek, játék vége, rekord, új játék
 python3 test_sound.py    # SNDLOG alapján: mind a 11 effekt a várt eseménynél szól
-python3 solver.py        # leggyorsabb győztes út pályánként
-python3 test_replay.py   # a megoldó útja a kész CAS-on, mindhárom pályán kijut
+python3 solver.py        # leggyorsabb győztes út pályánként és annak pontszáma
+python3 solver.py --pont # + a legjobb elérhető pontszám (lassú, kb. 4 perc)
+python3 test_replay.py   # a megoldó útja a kész CAS-on: mindhárom pályán kijut,
+                         # és a TVC pontszáma egyezik a modellével
 ```
 
 A `harness/tvcsim.c` a BLOKK 3D tesztkörnyezete három kiegészítéssel:
@@ -141,6 +162,7 @@ A `harness/tvcsim.c` a BLOKK 3D tesztkörnyezete három kiegészítéssel:
 
 ## Változások
 
+- v05: pontozás (csomag, időbónusz, fokozatos árnyékbónusz, pályaszorzó), 3 élet, játék vége, munkamenet-rekord; „+” a fontban. Javítva: kapuzáráskor 18:09-et mutatott az óra; a napszak-sáv jele csonkokat hagyott.
 - v04: tömör pályaformátum (épületlista, közös felhőalakok, futásidejű térképépítés); a program 11,8 KB-ról 8,3 KB-ra csökkent, pályánként kb. 150 bájt. A teszt a felépített térképeket is bájtra ellenőrzi.
 - v03: 3. pálya (Várudvar), 3 felhő. Javítva: a függőlegesen járőröző őrök a v01 óta egy helyben billegtek x-ben, ahelyett hogy fel-le jártak volna. Új: megoldó és végigjátszó teszt; a játékteszt az őrök helyét is ellenőrzi.
 - v02: hang.

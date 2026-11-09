@@ -43,13 +43,18 @@ def main():
     for idx in range(len(S.G.LEVELS)):
         r = S.solve(idx)
         sc, end = script_for(idx, r["path"])
-        sc += dump_state(end + 20) + [f"shot {end + 20} replay{idx + 1}.ppm"]
-        st = state_at(run(sc, end * 8 + 400, iters=True), end + 20)
-        ok = st["state"] == 1 and st["level"] == idx
+        sc += dump_state(end + 20) + [f"shot {end + 20} replay{idx + 1}.ppm",
+                                      f"dump {end + 20} {SYM['score']} 3"]
+        d = run(sc, end * 8 + 400, iters=True)
+        st = state_at(d, end + 20)
+        sb = d[(end + 20, SYM["score"])]
+        got_score = sb[0] | sb[1] << 8
+        want_score, lit = S.path_score(r)
+        ok = st["state"] == 1 and st["level"] == idx and got_score == want_score
         fails += not ok
         print(f"{r['lv'].E['title']}: megoldó útja {len(r['path']) - 1} lépésben, a TVC-n: "
               f"állapot={st['state']} pálya={st['level'] + 1} hely=({st['px']},{st['py']}) "
-              f"idő q={st['q']} -> {'KIJUTOTT' if ok else 'HIBA'}")
+              f"idő q={st['q']}, pont {got_score} (várt {want_score}, {lit} napos lépés) -> {'KIJUTOTT' if ok else 'HIBA'}")
     print("MINDEN VÉGIGJÁTSZÁS RENDBEN" if not fails else f"{fails} HIBA")
     return fails == 0
 

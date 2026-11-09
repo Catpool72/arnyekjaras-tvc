@@ -168,7 +168,7 @@ def main():
     fails += bool(bad)
     print(f"   2. pálya kezdőképe árnyék/látómező: {'OK' if not bad else bad[:5]}")
 
-    # --- 6. a 2. pálya után a 3., annak megnyerése után vissza az 1. pálya bevezetőjére
+    # --- 6. a 2. pálya után a 3., annak megnyerése után játék vége, majd új játék
     #     (a kezdő rajzolás kb. 30 képkocka, ezért 40-től)
     script = [f"poke 40 {SYM['level']} 1", f"poke 40 {SYM['state']} 1",
               f"key 42 {ROW_SPACE} {BIT_SPACE}", f"key 46 {ROW_SPACE} 0", "shot 90 level3.ppm"] + dump_state(90) + \
@@ -177,13 +177,16 @@ def main():
               f"poke 110 {SYM['allgot']} 1", f"poke 110 {SYM['got_n']} 3",
               f"poke 110 {SYM['px']} 30", f"poke 110 {SYM['py']} 10", f"poke 110 {SYM['gacc']} 0",
               f"key 112 {ROW_CUR} {BIT_RIGHT}", f"key 116 {ROW_CUR} 0", "shot 125 done.ppm"] + dump_state(125) + \
-             [f"key 140 {ROW_SPACE} {BIT_SPACE}", f"key 144 {ROW_SPACE} 0"] + dump_state(190)
-    d = run(script, 192)
-    s3, sw, s1 = state_at(d, 90), state_at(d, 125), state_at(d, 190)
-    ok = s3["level"] == 2 and not check_world(s3) and sw["state"] == 1 and s1["level"] == 0 and s1["state"] == 3
+             [f"key 140 {ROW_SPACE} {BIT_SPACE}", f"key 144 {ROW_SPACE} 0"] + dump_state(150) + \
+             [f"key 160 {ROW_SPACE} {BIT_SPACE}", f"key 164 {ROW_SPACE} 0"] + dump_state(210)
+    d = run(script, 212)
+    s3, sw, so, s1 = state_at(d, 90), state_at(d, 125), state_at(d, 150), state_at(d, 210)
+    ok = s3["level"] == 2 and not check_world(s3) and sw["state"] == 1 and so["state"] == 4 and \
+         s1["level"] == 0 and s1["state"] == 3
     fails += not ok
     print(f"6. 3. pálya kezdőképe {'OK' if not check_world(s3) else 'HIBA'}, megnyerése: állapot={sw['state']}, "
-          f"utána pálya={s1['level'] + 1} állapot={s1['state']} -> {'OK' if ok else 'HIBA'}")
+          f"szóközre játék vége ({so['state']}), újabb szóközre pálya={s1['level'] + 1} állapot={s1['state']} "
+          f"-> {'OK' if ok else 'HIBA'}")
 
     # --- 7. a pályakezdéskor felépített térképek (CLASSBUF, BASEBUF) mindhárom pályán
     import gen_game as GG
@@ -203,6 +206,27 @@ def main():
         ok = d[(f, SYM['level'])][0] == i and cls == want_cls and base == GG.base_map(L)
         fails += not ok
         print(f"7. {i + 1}. pálya felépített térképei: {'OK' if ok else 'HIBA'}")
+
+    # --- 8. életek: háromszori kapuzárás -> játék vége, rekord; szóközre új játék
+    def timeout(f):
+        return [f"poke {f} {SYM['q']} 71", f"poke {f} {SYM['mm']} 9", f"poke {f} {SYM['sub']} 11"]
+    def space(f):
+        return [f"key {f} {ROW_SPACE} {BIT_SPACE}", f"key {f + 3} {ROW_SPACE} 0"]
+    rd = lambda f, n: [f"dump {f} {SYM[n]} 2"]
+    script = space(30) + timeout(40) + rd(55, "lives") + space(60) + timeout(110) + rd(125, "lives") + \
+             space(130) + [f"poke 180 {SYM['score']} {1234 & 255}", f"poke 180 {SYM['score'] + 1} {1234 >> 8}"] + \
+             timeout(181) + rd(200, "hiscore") + dump_state(200) + ["shot 200 gameover.ppm"] + \
+             space(210) + dump_state(260) + rd(260, "score") + rd(260, "lives") + rd(260, "hiscore")
+    d = run(script, 262)
+    w = lambda f, n: d[(f, SYM[n])][0] | d[(f, SYM[n])][1] << 8
+    l1, l2 = d[(55, SYM["lives"])][0], d[(125, SYM["lives"])][0]
+    so, sn = state_at(d, 200), state_at(d, 260)
+    ok = (l1, l2) == (2, 1) and so["state"] == 4 and w(200, "hiscore") == 1234 and \
+         sn["state"] == 3 and sn["level"] == 0 and w(260, "score") == 0 and d[(260, SYM["lives"])][0] == 3 and \
+         w(260, "hiscore") == 1234
+    fails += not ok
+    print(f"8. életek {l1},{l2}, játék vége: állapot={so['state']}, rekord={w(200, 'hiscore')}; új játék: "
+          f"pálya={sn['level'] + 1} pont={w(260, 'score')} élet={d[(260, SYM['lives'])][0]} -> {'OK' if ok else 'HIBA'}")
 
     print("MINDEN TESZT RENDBEN" if not fails else f"{fails} HIBA")
     return fails == 0

@@ -1,5 +1,5 @@
 ;=============================================================================
-; ÁRNYÉKJÁRÁS  –  Videoton TV-Computer 64K, 16 színű mód (128x240)   v02
+; ÁRNYÉKJÁRÁS  –  Videoton TV-Computer 64K, 16 színű mód (128x240)   v05
 ; Z80 @ 3.125 MHz, sjasmplus.  Indítás: 10 PRINT USR(6659), automatikusan.
 ;
 ; Memória (lapozás $90 = U0 | U1 | VID | U3):
@@ -65,6 +65,14 @@ ST_PLAY     equ 0
 ST_WON      equ 1
 ST_LOST     equ 2
 ST_INTRO    equ 3
+ST_OVER     equ 4
+
+; pontozás (solver.py-vel egyezően)
+PTS_PKG     equ 100             ; csomagonként
+PTS_MIN     equ 5               ; a kapuzárásig hátralévő játékpercenként
+PTS_SHADOW  equ 300             ; árnyékbónusz, ...
+PTS_LIT     equ 10              ; ... napos mezőre tett lépésenként ennyivel kevesebb
+LIVES       equ 3
 
 ;-----------------------------------------------------------------------------
 ; BASIC betöltő: 10 PRINT USR(6659)
@@ -97,8 +105,13 @@ start:
         ld bc,BSS_LEN-1
         ld (hl),0
         ldir
+new_game:
         xor a
         ld (level),a
+        ld hl,0
+        ld (score),hl
+        ld a,LIVES
+        ld (lives),a
         jp level_intro
 
 ;=============================================================================
@@ -206,6 +219,9 @@ load_level:
         ld (repcnt),a
         ld (state),a
         ld (got_n),a
+        ld (litsteps),a
+        inc a
+        ld (hud_sc),a
         ld a,$FF
         ld (hud_status),a
         ld (hud_q),a
@@ -412,13 +428,17 @@ main_loop:
 .notintro:
         cp ST_LOST
         jp z,level_restart
-        ; nyert: következő pálya, az utolsó után elölről
+        cp ST_OVER
+        jp z,new_game
+        ; nyert: következő pálya, az utolsó után játék vége
         ld a,(level)
         inc a
         cp LEVEL_COUNT
-        jr c,.nx
-        xor a
-.nx:    ld (level),a
+        jr c,.nextlv
+        call game_over          ; az utolsó pálya után (szubrutin: visszatér)
+        jp main_loop
+.nextlv:
+        ld (level),a
         jp level_intro
 
 .play:
@@ -518,6 +538,8 @@ minute_tick:
         ld (q),a
         cp Q_END
         jr c,.m0
+        xor a
+        ld (mm),a               ; az óra 18:00-t mutasson
         ld hl,txt_closed        ; 18:00: nincs több napállás, nem számolunk árnyékot
         call lose
         ld hl,SFX_CLOSED
@@ -600,7 +622,7 @@ player_move:
         ; kapu?
         ld a,(gatex)
         cp d
-        jr nz,.nogate
+        jp nz,.nogate
         ld a,(gatey)
         cp e
         jr nz,.nogate
@@ -622,19 +644,36 @@ player_move:
         ld a,1
         ld (need_redraw),a
         call update_world
+        call level_score        ; HL = a pálya pontja
+        ld (last_pts),hl
+        ld de,(score)
+        add hl,de
+        jr nc,.sc
+        ld hl,$FFFF
+.sc:    ld (score),hl
+        ld a,1
+        ld (hud_sc),a
+        ld hl,SFX_WIN
+        ld a,7
+        call snd_play
+        ; összesítő: "KIJUTOTTAL! +nnnnn" (az utolsó pályán "VEGIGJATSZOTTAD!")
         ld a,(level)
         inc a
         cp LEVEL_COUNT
         ld hl,txt_won
         jr c,.w1
         ld hl,txt_done
-.w1:    push hl
-        ld hl,SFX_WIN
-        ld a,7
-        call snd_play
-        pop hl
+.w1:    ld de,msgbuf
+        call strcpy
+        ld hl,txt_plus
+        call strcpy
+        ld hl,(last_pts)
+        call num5
+        xor a
+        ld (de),a
         ld a,ST_WON
         ld (state),a
+        ld hl,msgbuf
         ld a,12
         jp end_msg
 .nogate:
@@ -642,6 +681,16 @@ player_move:
         ld a,e : ld (py),a
         ld a,1
         ld (need_redraw),a
+        push de
+        ld b,d
+        ld c,e
+        call IsShadow           ; napos mezőre lépett? (az árnyékbónuszhoz)
+        jr nz,.shd
+        ld hl,litsteps
+        inc (hl)
+        jr nz,.shd
+        dec (hl)                ; 255-nél megáll
+.shd:   pop de
         ; csomag?
         ld a,(npkg)
         ld b,a
@@ -729,7 +778,138 @@ lose:
         pop hl
         ld a,ST_LOST
         ld (state),a
+        ld a,1
+        ld (hud_sc),a
+        ld a,(lives)
+        dec a
+        ld (lives),a
         ld a,10
+        jp nz,end_msg
+        call end_msg            ; elfogyott az élet: a kép és az ok még látszik, ...
+        jp game_over            ; ... az állapotsorba a játék vége kerül
+
+; game_over: rekord frissítése, üzenet, ST_OVER (szóközre új játék)
+game_over:
+        ld a,ST_OVER
+        ld (state),a
+        ld hl,(score)
+        ld de,(hiscore)
+        or a
+        sbc hl,de
+        ld hl,txt_over
+        ld c,10
+        jr c,.go                ; nincs új rekord
+        jr z,.go
+        ld hl,(score)
+        ld (hiscore),hl
+        ld hl,txt_record
+        ld c,14
+.go:    push bc
+        ld de,msgbuf
+        call strcpy
+        ld hl,(score)
+        call num5
+        xor a
+        ld (de),a
+        pop bc
+        ld a,c
+        ld hl,msgbuf
+        ld de,txt_space
+        jp show_msg2
+
+; level_score: HL = (csomagok*100 + hátralévő perc*5 + árnyékbónusz) * (pálya+1)
+level_score:
+        ld a,Q_END
+        ld hl,q
+        sub (hl)
+        ld l,a
+        ld h,0
+        add hl,hl
+        ld d,h
+        ld e,l
+        add hl,hl
+        add hl,hl
+        add hl,de               ; (Q_END - q) * 10
+        ld a,(mm)
+        ld e,a
+        ld d,0
+        or a
+        sbc hl,de               ; hátralévő percek
+        ld d,h
+        ld e,l
+        add hl,hl
+        add hl,hl
+        add hl,de               ; * PTS_MIN (5)
+        ld a,(got_n)
+        or a
+        jr z,.np
+        ld b,a
+        ld de,PTS_PKG
+.p:     add hl,de
+        djnz .p
+.np:    ld a,(litsteps)
+        cp PTS_SHADOW/PTS_LIT
+        jr nc,.nb               ; 30 vagy több napos lépés: nincs bónusz
+        push hl
+        ld l,a
+        ld h,0
+        add hl,hl
+        ld d,h
+        ld e,l
+        add hl,hl
+        add hl,hl
+        add hl,de               ; napos lépések * 10
+        ex de,hl
+        ld hl,PTS_SHADOW
+        or a
+        sbc hl,de
+        ex de,hl
+        pop hl
+        add hl,de
+.nb:    ld a,(level)
+        or a
+        ret z
+        ld b,a
+        ld d,h
+        ld e,l
+.m:     add hl,de               ; * (pálya+1)
+        djnz .m
+        ret
+
+; strcpy: HL -> DE a 0-ig; DE a záró 0 helyére mutat (azt is beírja)
+strcpy:
+        ld a,(hl)
+        ld (de),a
+        or a
+        ret z
+        inc hl
+        inc de
+        jr strcpy
+
+; num5: HL -> 5 decimális számjegy DE-re; DE utánuk
+num5:
+        ld bc,-10000
+        call .d
+        ld bc,-1000
+        call .d
+        ld bc,-100
+        call .d
+        ld bc,-10
+        call .d
+        ld a,l
+        add a,'0'
+        ld (de),a
+        inc de
+        ret
+.d:     ld a,'0'-1
+.l:     inc a
+        add hl,bc
+        jr c,.l
+        sbc hl,bc
+        ld (de),a
+        inc de
+        ret
+
 end_msg:
         push hl
         push af
@@ -1073,6 +1253,13 @@ hud_update:
         ld (hl),a
         call draw_got
 .nogot:
+        ld a,(hud_sc)
+        or a
+        jr z,.nosc
+        xor a
+        ld (hud_sc),a
+        call draw_score
+.nosc:
         ; --- állapotsor (csak játék közben)
         ld a,(state)
         cp ST_PLAY
@@ -1186,16 +1373,34 @@ draw_clock:
 .ink:   call set_ink
         ld hl,clk_buf
         ld de,VRAM+HUD_Y1*64
-        call print_str
-        ld a,7
+        jp print_str
+
+; draw_score: "PONT:nnnnn" és "ELET:n"
+draw_score:
+        ld a,15
         call set_ink
-        ld hl,(title_ptr)
-        ld de,VRAM+HUD_Y1*64+14
+        ld de,score_buf+5
+        ld hl,(score)
+        call num5
+        ld hl,score_buf
+        ld de,VRAM+HUD_Y1*64+12
+        call print_str
+        ld a,(lives)
+        add a,'0'
+        ld (lives_buf+5),a
+        ld a,(lives)
+        cp 2
+        ld a,15
+        jr nc,.i
+        ld a,10                 ; utolsó élet: piros
+.i:     call set_ink
+        ld hl,lives_buf
+        ld de,VRAM+HUD_Y1*64+34
         jp print_str
 
 draw_got:
         add a,'0'
-        ld (got_buf+7),a
+        ld (got_buf+3),a
         ld a,(allgot)
         or a
         ld a,14
@@ -1203,10 +1408,20 @@ draw_got:
         ld a,13
 .i:     call set_ink
         ld hl,got_buf
-        ld de,VRAM+HUD_Y1*64+44
+        ld de,VRAM+HUD_Y1*64+52
         jp print_str
 
 draw_bar:
+        ld hl,VRAM+(HUD_BAR-2)*64   ; a napjel sáv fölé és alá nyúló sorai
+        ld de,VRAM+(HUD_BAR-2)*64+1
+        ld bc,2*64-1
+        ld (hl),0
+        ldir
+        ld hl,VRAM+(HUD_BAR+6)*64
+        ld de,VRAM+(HUD_BAR+6)*64+1
+        ld bc,2*64-1
+        ld (hl),0
+        ldir
         ld de,VRAM+HUD_BAR*64
         ld c,6
 .r:     ld hl,BARGFX
@@ -1339,7 +1554,9 @@ ink_byte:
 
 SPREAD: db 0,1,4,5,16,17,20,21,64,65,68,69,80,81,84,85
 clk_buf:    db "00:00",0
-got_buf:    db "CSOMAG 0/3",0
+got_buf:    db "CS:0/3",0
+score_buf:  db "PONT:00000",0
+lives_buf:  db "ELET:3",0
 
 txt_space:  db " - SZOKOZ",0
 txt_sun:    db "NAPON - VIGYAZZ!",0
@@ -1352,6 +1569,9 @@ txt_bump:   db "BELEBOTLOTT AZ OR!",0
 txt_closed: db "BEZARTAK A KAPUT!",0
 txt_won:    db "KIJUTOTTAL!",0
 txt_done:   db "VEGIGJATSZOTTAD!",0
+txt_plus:   db " +",0
+txt_over:   db "JATEK VEGE! ",0
+txt_record: db "UJ REKORD! ",0
 
 ;=============================================================================
 ; RENDSZER: képkocka, billentyűzet, kilépés (a BLOKK 3D-ből)
@@ -1568,6 +1788,13 @@ keys        ds 2
 kprev       ds 2
 knew        ds 2
 ink_tbl     ds 4
+score       ds 2
+hiscore     ds 2
+last_pts    ds 2
+lives       ds 1
+litsteps    ds 1
+hud_sc      ds 1
+msgbuf      ds 34
 snd_ptr     ds 2
 snd_cnt     ds 1
 snd_pri     ds 1
