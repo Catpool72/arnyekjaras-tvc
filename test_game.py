@@ -124,7 +124,7 @@ def main():
     script = [f"key 30 {ROW_SPACE} {BIT_SPACE}", f"key 32 {ROW_SPACE} 0",
               f"poke 41 {SYM['px']} {nx[0]}", f"poke 41 {SYM['py']} {nx[1]}",
               f"poke 41 {SYM['gacc']} 0",
-              f"key 42 {ROW_CUR} {nx[2]}", f"key 43 {ROW_CUR} 0", "shot 50 lose.ppm"] + dump_state(48)
+              f"key 42 {ROW_CUR} {nx[2]}", f"key 46 {ROW_CUR} 0", "shot 50 lose.ppm"] + dump_state(48)
     st = state_at(run(script, 52), 48)
     ok = st["state"] == 2 and (st["px"], st["py"]) == (x, y)
     fails += not ok
@@ -145,7 +145,7 @@ def main():
               f"poke 40 {SYM['allgot']} 1", f"poke 40 {SYM['got_n']} 3",
               f"poke 40 {SYM['px']} 28", f"poke 40 {SYM['py']} 18", f"poke 40 {SYM['gacc']} 0",
               f"poke 40 {SYM['need_redraw']} 1",
-              f"key 42 {ROW_CUR} {BIT_DOWN}", f"key 43 {ROW_CUR} 0", "shot 50 win.ppm"] + dump_state(48) + \
+              f"key 42 {ROW_CUR} {BIT_DOWN}", f"key 46 {ROW_CUR} 0", "shot 50 win.ppm"] + dump_state(48) + \
              [f"key 60 {ROW_SPACE} {BIT_SPACE}", f"key 62 {ROW_SPACE} 0", "shot 90 level2.ppm"] + dump_state(90)
     d = run(script, 92)
     st, st2 = state_at(d, 48), state_at(d, 90)

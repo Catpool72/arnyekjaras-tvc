@@ -1,5 +1,5 @@
 ;=============================================================================
-; ÁRNYÉKJÁRÁS  –  Videoton TV-Computer 64K, 16 színű mód (128x240)   v01
+; ÁRNYÉKJÁRÁS  –  Videoton TV-Computer 64K, 16 színű mód (128x240)   v02
 ; Z80 @ 3.125 MHz, sjasmplus.  Indítás: 10 PRINT USR(6659), automatikusan.
 ;
 ; Memória (lapozás $90 = U0 | U1 | VID | U3):
@@ -117,6 +117,9 @@ level_intro:
 level_restart:
         call load_level
         call redraw_all
+        ld hl,SFX_INTRO
+        ld a,6
+        call snd_play
         jp main_loop
 
 ; load_level: a (level) pálya adatainak betöltése, kezdőállapot
@@ -228,6 +231,8 @@ redraw_all:
         ldir
         call update_world
         call hud_update
+        xor a
+        ld (skipfr),a           ; a teljes rajzolás alatt elnyelt képkockákat nem pótoljuk
         ret
 
 ;=============================================================================
@@ -235,6 +240,7 @@ redraw_all:
 ;=============================================================================
 main_loop:
         call vsync
+        call snd_tick
         call read_keys
         ld a,(knew+1)
         and K_ESC
@@ -251,8 +257,11 @@ main_loop:
         jr nz,.notintro
         xor a
         ld (state),a
+        ld hl,SFX_INTRO
+        ld a,6
+        call snd_play
         call hud_status_force
-        jr main_loop
+        jp main_loop
 .notintro:
         cp ST_LOST
         jp z,level_restart
@@ -346,6 +355,13 @@ main_loop:
 
 ; minute_tick: egy játékperc: óra, napállás, felhők
 minute_tick:
+        ld a,(speed)
+        cp WAIT_SPEED
+        jr nz,.notick
+        ld hl,SFX_TICK
+        ld a,1
+        call snd_play
+.notick:
         ld a,(mm)
         inc a
         cp 10
@@ -356,9 +372,23 @@ minute_tick:
         cp Q_END
         jr c,.m0
         ld hl,txt_closed        ; 18:00: nincs több napállás, nem számolunk árnyékot
-        jp lose
+        call lose
+        ld hl,SFX_CLOSED
+        ld a,7
+        jp snd_play
 .m0:    ld hl,need_shadow
         ld (hl),1
+        cp Q_WARN               ; 17:00: dupla harang
+        ld hl,SFX_WARN
+        jr z,.bell
+.m6:    sub 6                   ; egész óra: q mod 6 = 0
+        jr z,.bell1
+        jr nc,.m6
+        jr .nobell
+.bell1: ld hl,SFX_BELL
+.bell:  ld a,3
+        call snd_play
+.nobell:
         xor a
 .m:     ld (mm),a
         ; felhők
@@ -430,6 +460,9 @@ player_move:
         ld a,(allgot)
         or a
         jr nz,.win
+        ld hl,SFX_LOCKED
+        ld a,4
+        call snd_play
         ld hl,txt_need
         ld a,10
         ld (msg_ptr),hl
@@ -448,7 +481,12 @@ player_move:
         ld hl,txt_won
         jr c,.w1
         ld hl,txt_done
-.w1:    ld a,ST_WON
+.w1:    push hl
+        ld hl,SFX_WIN
+        ld a,7
+        call snd_play
+        pop hl
+        ld a,ST_WON
         ld (state),a
         ld a,12
         jp end_msg
@@ -482,14 +520,26 @@ player_move:
         ld c,a
         inc hl
         djnz .p
-        ld a,(npkg)
+        ld a,(got_n)
         cp c
-        ld a,0
-        jr nz,.ng
-        inc a
-.ng:    ld (allgot),a
+        jr z,.nop               ; nem vett fel újat
         ld a,c
         ld (got_n),a
+        ld a,(npkg)
+        cp c
+        jr z,.all
+        ld hl,SFX_PKG
+        ld a,4
+        call snd_play
+        jr .nop
+.all:   ld a,1
+        ld (allgot),a
+        ld hl,SFX_ALLGOT
+        ld a,5
+        call snd_play
+.nop:   ld hl,SFX_STEP          ; alacsony prioritás: a csomaghangot nem szakítja meg
+        ld a,1
+        call snd_play
         jp check_caught
 
 ; check_caught: napos, látott mezőn áll, vagy őr van mellette
@@ -525,6 +575,11 @@ check_caught:
 
 ; lose: HL = üzenet
 lose:
+        push hl
+        ld hl,SFX_CAUGHT
+        ld a,7
+        call snd_play
+        pop hl
         ld a,ST_LOST
         ld (state),a
         ld a,10
@@ -658,6 +713,7 @@ update_world:
         ld b,(ix+G_X)
         ld c,(ix+G_Y)
         call VisionGuard
+        call snd_poll
         ld de,G_SIZE
         add ix,de
         pop bc
@@ -805,6 +861,7 @@ sync_cells:
         ld de,64*10-64
         add hl,de
         pop de
+        call snd_poll
         dec c
         jr nz,.r
         ret
@@ -1153,7 +1210,13 @@ txt_done:   db "VEGIGJATSZOTTAD!",0
 ; RENDSZER: képkocka, billentyűzet, kilépés (a BLOKK 3D-ből)
 ;=============================================================================
 vsync:
-        ld hl,3000
+        ld a,(skipfr)           ; a snd_poll által már elnyelt képkocka: nem várunk
+        or a
+        jr z,.wait
+        dec a
+        ld (skipfr),a
+        ret
+.wait:  ld hl,3000
 .w:     in a,($59)
         and $10
         jr z,.got
@@ -1189,6 +1252,7 @@ read_keys:
         ret
 
 quit:
+        call snd_stop
 .rel:   call vsync
         call read_keys
         ld hl,(keys)
@@ -1215,6 +1279,88 @@ quit_sp:
         rst $30
         db $05                  ; CLS
         ret
+
+;-----------------------------------------------------------------------------
+; HANG (a BLOKK 3D-ből): egycsatornás hanggenerátor, képkockánként léptetett
+; effektek. Effekt: (db képkocka, hangmagasság alsó/felső, hangerő)*, db 0.
+; 4/5-ös port: 12 bites hangmagasság (5-ös b4 = hang be), 6-os: b2-b5 hangerő,
+; b0-b1 videómód (itt 2 = 16 szín).
+;-----------------------------------------------------------------------------
+; snd_play: HL = effekt, A = prioritás (alacsonyabb nem szakít félbe magasabbat)
+snd_play:
+        ld e,a
+        ld a,(snd_ptr+1)
+        or a
+        jr z,.go
+        ld a,(snd_pri)
+        cp e
+        jr z,.go
+        ret nc
+.go:    ld a,e
+        ld (snd_pri),a
+        ld (snd_ptr),hl
+        jr snd_next
+
+; snd_tick: képkockánként egyszer
+snd_tick:
+        ld a,(snd_ptr+1)
+        or a
+        ret z
+        ld hl,snd_cnt
+        dec (hl)
+        ret nz
+snd_next:
+        ld hl,(snd_ptr)
+        ld a,(hl)
+        or a
+        jr z,snd_stop
+        ld (snd_cnt),a
+        inc hl
+        ld a,(hl)
+        out ($04),a
+        inc hl
+        ld a,(hl)
+        or $10
+        out ($05),a
+        inc hl
+        ld a,(hl)
+        add a,a
+        add a,a
+        or 2                    ; hangerő + 16 színű mód
+        out ($06),a
+        inc hl
+        ld (snd_ptr),hl
+        ret
+
+snd_stop:
+        xor a
+        out ($05),a
+        ld a,2
+        out ($06),a
+        ld hl,0
+        ld (snd_ptr),hl
+        ret
+
+; snd_poll: hosszú munka közben: ha eltelt egy képkocka, lép egyet a hang
+;   megőrzi BC, DE, HL; rontja AF
+snd_poll:
+        in a,($59)
+        and $10
+        ret nz
+        out ($07),a
+        ld a,(skipfr)
+        inc a
+        ld (skipfr),a
+        push bc
+        push de
+        push hl
+        call snd_tick
+        pop hl
+        pop de
+        pop bc
+        ret
+
+ShadowRowHook equ snd_poll
 
 ;=============================================================================
 ; MODULOK ÉS ADATOK
@@ -1278,6 +1424,10 @@ keys        ds 2
 kprev       ds 2
 knew        ds 2
 ink_tbl     ds 4
+snd_ptr     ds 2
+snd_cnt     ds 1
+snd_pri     ds 1
+skipfr      ds 1
 npkg        ds 1
 pkgs        ds 3*3
 ncloud      ds 1

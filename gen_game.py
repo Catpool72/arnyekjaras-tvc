@@ -169,6 +169,39 @@ def bar():
     return out
 
 
+# ---- hangeffektek: (képkocka, Hz, hangerő 0..15); f = 195312,5 / (4096 - érték)
+SFX = {
+    "STEP":   [(1, 300, 4)],
+    "TICK":   [(1, 2500, 3)],
+    "BELL":   [(2, 880, 13), (3, 880, 11), (4, 880, 9), (6, 880, 6), (8, 880, 3)],
+    "WARN":   [(2, 660, 13), (3, 660, 10), (4, 660, 6), (4, 660, 0),
+               (2, 660, 13), (3, 660, 10), (4, 660, 6), (8, 660, 3)],
+    "CLOSED": [(4, 196, 14), (6, 196, 10), (8, 196, 6), (4, 196, 0), (4, 196, 14), (6, 196, 10),
+               (8, 196, 6), (4, 196, 0), (4, 196, 14), (8, 196, 10), (16, 196, 5)],
+    "PKG":    [(2, 784, 12), (2, 988, 12), (2, 1175, 12), (4, 1568, 12)],
+    "ALLGOT": [(3, 1047, 12), (3, 1319, 12), (3, 1568, 12), (3, 2093, 13), (8, 2637, 13)],
+    "LOCKED": [(4, 147, 11), (6, 131, 10)],
+    "CAUGHT": [(4, 784, 13), (4, 622, 13), (4, 523, 12), (12, 392, 11)],
+    "WIN":    [(4, 523, 13), (4, 659, 13), (4, 784, 13), (10, 1047, 14), (4, 784, 12), (14, 1047, 14)],
+    "INTRO":  [(3, 392, 10), (3, 523, 10), (6, 659, 11)],
+}
+
+
+def pitch(f):
+    return max(0, min(4094, int(round(4096 - 195312.5 / f))))
+
+
+def sfx():
+    o = []
+    for name, steps in SFX.items():
+        o.append(f"SFX_{name}:")
+        for fr, f, v in steps:
+            p = pitch(f)
+            o.append(f"        db {fr},${p & 255:02X},${p >> 8:02X},{v}   ; {f} Hz")
+        o.append("        db 0")
+    return "\n".join(o)
+
+
 def db(vals, per=16):
     vals = list(vals)
     return "\n".join("        db " + ",".join(str(v) for v in vals[i:i + per]) for i in range(0, len(vals), per))
@@ -186,6 +219,7 @@ def gen():
     o.append(db(bar()))
     o.append(f"QCOL:   ; napállás-kvantum (0..{G.Q_COUNT}) -> sáv oszlopa")
     o.append(db([(q * 7) // 8 for q in range(G.Q_COUNT + 1)]))
+    o.append(sfx())
     o.append("LEVEL_TAB:")
     o.append("        dw " + ",".join(f"{L['name']}_DATA" for L in G.LEVELS))
     o.append(f"LEVEL_COUNT equ {len(G.LEVELS)}")

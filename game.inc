@@ -93,6 +93,78 @@ QCOL:   ; napállás-kvantum (0..72) -> sáv oszlopa
         db 28,28,29,30,31,32,33,34,35,35,36,37,38,39,40,41
         db 42,42,43,44,45,46,47,48,49,49,50,51,52,53,54,55
         db 56,56,57,58,59,60,61,62,63
+SFX_STEP:
+        db 1,$75,$0D,4   ; 300 Hz
+        db 0
+SFX_TICK:
+        db 1,$B2,$0F,3   ; 2500 Hz
+        db 0
+SFX_BELL:
+        db 2,$22,$0F,13   ; 880 Hz
+        db 3,$22,$0F,11   ; 880 Hz
+        db 4,$22,$0F,9   ; 880 Hz
+        db 6,$22,$0F,6   ; 880 Hz
+        db 8,$22,$0F,3   ; 880 Hz
+        db 0
+SFX_WARN:
+        db 2,$D8,$0E,13   ; 660 Hz
+        db 3,$D8,$0E,10   ; 660 Hz
+        db 4,$D8,$0E,6   ; 660 Hz
+        db 4,$D8,$0E,0   ; 660 Hz
+        db 2,$D8,$0E,13   ; 660 Hz
+        db 3,$D8,$0E,10   ; 660 Hz
+        db 4,$D8,$0E,6   ; 660 Hz
+        db 8,$D8,$0E,3   ; 660 Hz
+        db 0
+SFX_CLOSED:
+        db 4,$1C,$0C,14   ; 196 Hz
+        db 6,$1C,$0C,10   ; 196 Hz
+        db 8,$1C,$0C,6   ; 196 Hz
+        db 4,$1C,$0C,0   ; 196 Hz
+        db 4,$1C,$0C,14   ; 196 Hz
+        db 6,$1C,$0C,10   ; 196 Hz
+        db 8,$1C,$0C,6   ; 196 Hz
+        db 4,$1C,$0C,0   ; 196 Hz
+        db 4,$1C,$0C,14   ; 196 Hz
+        db 8,$1C,$0C,10   ; 196 Hz
+        db 16,$1C,$0C,5   ; 196 Hz
+        db 0
+SFX_PKG:
+        db 2,$07,$0F,12   ; 784 Hz
+        db 2,$3A,$0F,12   ; 988 Hz
+        db 2,$5A,$0F,12   ; 1175 Hz
+        db 4,$83,$0F,12   ; 1568 Hz
+        db 0
+SFX_ALLGOT:
+        db 3,$45,$0F,12   ; 1047 Hz
+        db 3,$6C,$0F,12   ; 1319 Hz
+        db 3,$83,$0F,12   ; 1568 Hz
+        db 3,$A3,$0F,13   ; 2093 Hz
+        db 8,$B6,$0F,13   ; 2637 Hz
+        db 0
+SFX_LOCKED:
+        db 4,$CF,$0A,11   ; 147 Hz
+        db 6,$2D,$0A,10   ; 131 Hz
+        db 0
+SFX_CAUGHT:
+        db 4,$07,$0F,13   ; 784 Hz
+        db 4,$C6,$0E,13   ; 622 Hz
+        db 4,$8B,$0E,12   ; 523 Hz
+        db 12,$0E,$0E,11   ; 392 Hz
+        db 0
+SFX_WIN:
+        db 4,$8B,$0E,13   ; 523 Hz
+        db 4,$D8,$0E,13   ; 659 Hz
+        db 4,$07,$0F,13   ; 784 Hz
+        db 10,$45,$0F,14   ; 1047 Hz
+        db 4,$07,$0F,12   ; 784 Hz
+        db 14,$45,$0F,14   ; 1047 Hz
+        db 0
+SFX_INTRO:
+        db 3,$0E,$0E,10   ; 392 Hz
+        db 3,$8B,$0E,10   ; 523 Hz
+        db 6,$D8,$0E,11   ; 659 Hz
+        db 0
 LEVEL_TAB:
         dw DELIKAPU_DATA,PIACTER_DATA
 LEVEL_COUNT equ 2

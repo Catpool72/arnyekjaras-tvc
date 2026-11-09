@@ -18,6 +18,9 @@
 ;  Lekérdezés:
 ;       ld b,<x> : ld c,<y> : call IsShadow   ; A = 0/1/2, Z = napos
 ;
+;  A főprogramnak kell egy ShadowRowHook rutin (soronként hívódik, a BC,
+;  DE, HL regisztereket meg kell őriznie; ha nincs rá szükség: egy ret).
+;
 ;  Szintaxis: Zilog-mnemonikok, sjasmplus / pasmo kompatibilis.
 ; ===================================================================
 
@@ -136,6 +139,7 @@ ShadowCast:
         ld hl,SHBUF+MY*STRIDE+MX
         ld c,MAP_H
 CastRow:
+        call ShadowRowHook      ; a főprogram adja (pl. hangléptetés); BC, DE, HL-t megőrzi
         ld b,MAP_W
 CastCol:
         ld a,(de)

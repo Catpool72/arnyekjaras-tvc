@@ -1,4 +1,4 @@
-# ÁRNYÉKJÁRÁS – Videoton TVC 64K (v01)
+# ÁRNYÉKJÁRÁS – Videoton TVC 64K (v02)
 
 Saját játék, nem átirat. Lopakodás egy városban, ahol csak az árnyék véd: a nap keletről nyugatra halad, és az épületek, fák és a városfal árnyéka folyamatosan fordul és változik a hossza. A 3 csomagot kapuzárás (18:00) előtt kell kicsempészni. Az őrök csak a napon látnak meg.
 
@@ -31,6 +31,26 @@ Saját játék, nem átirat. Lopakodás egy városban, ahol csak az árnyék vé
 - Cellás frissítés: a program kiszámolja, minek kellene a képernyőn lennie (`DESIRED`), és csak azokat a cellákat rajzolja újra, amelyek eltérnek a kirajzolttól (`SHOWN`).
 - Bitkiosztás 16 színű módban: a bal képpont a páratlan bitekben (b7=I, b5=G, b3=R, b1=B), a jobb a párosakban. Ez az ep128emu `tvcvideo.cpp` alapján készült, amelyre az Ep128web is épül.
 
+## Hang
+
+Egycsatornás TVC hanggenerátor, a BLOKK 3D hangrendszerével: képkockánként léptetett effektek prioritással, a `gen_game.py` `SFX` táblájában Hz-ben állíthatók.
+
+| Esemény | Effekt |
+|---|---|
+| lépés | halk koppanás (300 Hz) |
+| várakozás | ketyegés játékpercenként |
+| egész óra | harangszó (880 Hz, lecsengő) |
+| 17:00 | dupla, mélyebb harang |
+| 18:00 | háromszori mély harangozás, kapuzárás |
+| csomag | felfutó dallam |
+| mind a 3 csomag | csilingelés, nyílik a kapu |
+| zárt kapu | mély zümmögés |
+| lebukás | lefelé lépő dallam |
+| kijutás | fanfár |
+| pályaindítás | rövid szignál |
+
+A hosszú számítások (árnyékvetés soronként, képfrissítés soronként, látómező őrönként) közben a `snd_poll` lépteti a hangot, így az nem nyúlik meg. Az így elnyelt képkockákat a `vsync` számon tartja, ezért a játékidő ütemét ez nem lassítja.
+
 ## Árnyék és látómező
 
 - `shadow.asm`: táblavezérelt vetés. Napállásonként (10 játékperc) egy irány-offsetlista tartozik, és magasságonként egy darabszám. A 64 bájt széles, margós puffer miatt nincs vágás. Legrosszabb eset kb. 305 000 ciklus (kb. 98 ms), 10 játékpercenként.
@@ -59,6 +79,7 @@ python3 test_shadow.py   # táblás árnyékalgoritmus a demóhoz mérve: 864 es
 python3 test_asm.py      # shadow.asm + vision.asm a z80sim-ben: 1344 eset, ciklusszámok
 python3 test_game.py     # a kész CAS a tvcsim-ben: árnyék/látómező 31 időpontban,
                          # mozgás, lebukás, kapuzárás, győzelem + 2. pálya
+python3 test_sound.py    # SNDLOG alapján: mind a 11 effekt a várt eseménynél szól
 ```
 
 A `harness/tvcsim.c` a BLOKK 3D tesztkörnyezete két kiegészítéssel: 16 színű képmentés, valamint a `HOOK=cím` környezeti változó. Ezzel a kiolvasás és a képmentés a főciklus nyugalmi pontján (a `vsync`-ben) történik, nem félkész újraszámolás közben.
@@ -74,6 +95,5 @@ A `harness/tvcsim.c` a BLOKK 3D tesztkörnyezete két kiegészítéssel: 16 szí
 ## Ismert korlátok (v01)
 
 - Csak a tvcsim-ben tesztelve, valódi gépen és Ep128web-ben még nem.
-- Nincs hang.
 - A szövegek ékezet nélküliek (3×5-ös font).
 - A Piactér nehéz; a pályák hangolása még hátravan.
