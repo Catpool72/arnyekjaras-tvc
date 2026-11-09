@@ -606,7 +606,7 @@ guards_step:
         jr nz,.go
         ld a,c
         cp (ix+G_Y)
-        jr nz,.go
+        jr nz,.vy               ; x már egyezik: csak y-ban kell lépni
         ; célba ért: következő pont
         ld a,(ix+G_LOOP)
         or a
@@ -1371,6 +1371,7 @@ ShadowRowHook equ snd_poll
         include "vistab.inc"
         include "level1.inc"
         include "level2.inc"
+        include "level3.inc"
         include "game.inc"
 
 IMAGE_END:
@@ -1431,7 +1432,7 @@ skipfr      ds 1
 npkg        ds 1
 pkgs        ds 3*3
 ncloud      ds 1
-clouds      ds 2*C_SIZE
+clouds      ds 3*C_SIZE
 nguard      ds 1
 guards      ds 4*G_SIZE
 BSS_LEN     equ $ - BSS

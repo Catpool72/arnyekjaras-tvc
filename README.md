@@ -1,4 +1,4 @@
-# ÁRNYÉKJÁRÁS – Videoton TVC 64K (v02)
+# ÁRNYÉKJÁRÁS – Videoton TVC 64K (v03)
 
 Saját játék, nem átirat. Lopakodás egy városban, ahol csak az árnyék véd: a nap keletről nyugatra halad, és az épületek, fák és a városfal árnyéka folyamatosan fordul és változik a hossza. A 3 csomagot kapuzárás (18:00) előtt kell kicsempészni. Az őrök csak a napon látnak meg.
 
@@ -20,9 +20,26 @@ Saját játék, nem átirat. Lopakodás egy városban, ahol csak az árnyék vé
 - Árnyékban (sötétkék, kék pöttyökkel) és felhő alatt (sötétkék, türkiz pöttyökkel) nem látnak, de a közvetlenül melletted elhaladó őr így is észrevesz.
 - A kapu csak mind a 3 csomaggal nyílik (ilyenkor világoskék lesz).
 - 18:00-kor bezárják a kaput.
-- Két pálya: Déli kapu (7:00-tól, 3 őr, 1 felhő) és Piactér (8:00-tól, 4 őr, ebből egy körbejár, 2 felhő, négy szint magas templomtorony).
+- Három pálya:
+  - **Déli kapu**: 7:00-tól, 3 őr, 1 felhő. Bemelegítő.
+  - **Piactér**: 8:00-tól, 4 őr (egyikük körbejár), 2 felhő, négy szint magas templomtorony.
+  - **Várudvar**: 12:00-tól. Délben szinte nincs árnyék, a felhőkre és a délutáni, keletre nyúló árnyékokra kell várni. Az öregtorony körül egy őr körbejár, a kapu a keleti falban van.
 
 ![Piactér](docs/piacter.png)
+
+![Várudvar](docs/varudvar.png)
+
+## Megoldhatóság
+
+A `solver.py` a játék pontos időzítésével (játékperc 12, őrlépés 22, lépés 5 képkocka, várakozás 8×) és a demóval azonos árnyék- és látómező-számítással keresi a leggyorsabb győztes utat:
+
+| Pálya | Indulás | Leggyorsabb kijutás | Lépés | Várakozás |
+|---|---|---|---|---|
+| Déli kapu | 7:00 | 7:25 | 59 | 2 |
+| Piactér | 8:00 | 8:51 | 75 | 30 |
+| Várudvar | 12:00 | 16:17 | 74 | 340 (kb. 7 mp valós idő) |
+
+A `test_replay.py` a megoldó útját billentyűleütésekké alakítja, és a kész CAS-on végigjátssza a tvcsim-ben: mindhárom pályán kijut.
 
 ## Képernyő
 
@@ -80,9 +97,14 @@ python3 test_asm.py      # shadow.asm + vision.asm a z80sim-ben: 1344 eset, cikl
 python3 test_game.py     # a kész CAS a tvcsim-ben: árnyék/látómező 31 időpontban,
                          # mozgás, lebukás, kapuzárás, győzelem + 2. pálya
 python3 test_sound.py    # SNDLOG alapján: mind a 11 effekt a várt eseménynél szól
+python3 solver.py        # leggyorsabb győztes út pályánként
+python3 test_replay.py   # a megoldó útja a kész CAS-on, mindhárom pályán kijut
 ```
 
-A `harness/tvcsim.c` a BLOKK 3D tesztkörnyezete két kiegészítéssel: 16 színű képmentés, valamint a `HOOK=cím` környezeti változó. Ezzel a kiolvasás és a képmentés a főciklus nyugalmi pontján (a `vsync`-ben) történik, nem félkész újraszámolás közben.
+A `harness/tvcsim.c` a BLOKK 3D tesztkörnyezete három kiegészítéssel:
+- 16 színű képmentés;
+- `HOOK=cím`: a kiolvasás és a képmentés a főciklus nyugalmi pontján (a `vsync`-ben) történik, nem félkész újraszámolás közben;
+- `ITER=1` (a `HOOK` mellett): minden esemény a főciklus köreihez kötve. A játék ideje is körönként halad, így a megoldó útja pontosan visszajátszható.
 
 ## Fájlok
 
@@ -96,4 +118,10 @@ A `harness/tvcsim.c` a BLOKK 3D tesztkörnyezete két kiegészítéssel: 16 szí
 
 - Csak a tvcsim-ben tesztelve, valódi gépen és Ep128web-ben még nem.
 - A szövegek ékezet nélküliek (3×5-ös font).
-- A Piactér nehéz; a pályák hangolása még hátravan.
+- A Déli kapu könnyű; a pályák további hangolása még hátravan.
+
+## Változások
+
+- v03: 3. pálya (Várudvar), 3 felhő. Javítva: a függőlegesen járőröző őrök a v01 óta egy helyben billegtek x-ben, ahelyett hogy fel-le jártak volna. Új: megoldó és végigjátszó teszt; a játékteszt az őrök helyét is ellenőrzi.
+- v02: hang.
+- v01: első változat, két pálya.

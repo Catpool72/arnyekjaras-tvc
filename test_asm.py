@@ -51,7 +51,8 @@ def region(sim, base):
 
 def main():
     sim = Z80Sim([os.path.join(HERE, f) for f in
-                  ("mem_test.inc", "shadow.asm", "vision.asm", "suntab.inc", "vistab.inc", "level1.inc", "level2.inc")],
+                  ("mem_test.inc", "shadow.asm", "vision.asm", "suntab.inc", "vistab.inc")
+                  + tuple(f"level{i + 1}.inc" for i in range(len(G.LEVELS)))],
                  mem_fill=0xAA)
     SHBUF = sim.sym["SHBUF"]
     rnd = random.Random(72)

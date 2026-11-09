@@ -106,7 +106,7 @@ static void shot(const char *name) {
     fclose(f);
 }
 
-static int hook = -1, pend[256], npend;
+static int hook = -1, pend[256], npend, itermode, iter;
 static void do_dumps(int frame) {
     for (int i = 0; i < npk; i++) if (pks[i].frame == frame && pks[i].dump) {
         printf("dump f%d %04X:", frame, pks[i].addr);
@@ -118,6 +118,7 @@ static void do_dumps(int frame) {
 
 int main(int argc, char **argv) {
     if (getenv("HOOK")) hook = (int)strtol(getenv("HOOK"), NULL, 0);
+    itermode = hook >= 0 && getenv("ITER") != NULL;
     if (argc < 4) { fprintf(stderr, "usage: tvcsim file.cas script.txt frames\n"); return 1; }
     FILE *f = fopen(argv[1], "rb");
     static uint8_t buf[65536]; size_t n = fread(buf, 1, sizeof buf, f); fclose(f);
@@ -157,10 +158,19 @@ int main(int argc, char **argv) {
         if (bad_write) { fprintf(stderr, "write to ROM/unmapped (map %02X) at PC %04X\n", p2, cpu.pc); return 2; }
         if (cpu.cyc >= next_frame) {
             next_frame += FRAME_CYC; frame++; ff = 0;
-            for (int i = 0; i < nev; i++) if (evs[i].frame == frame) kb[evs[i].row] = evs[i].mask;
-            for (int i = 0; i < npk; i++) if (pks[i].frame == frame && !pks[i].dump) wb(0, pks[i].addr, pks[i].val);
-            if (hook >= 0) { if (npend < 256) pend[npend++] = frame; }
-            else do_dumps(frame);
+            if (!itermode) {
+                for (int i = 0; i < nev; i++) if (evs[i].frame == frame) kb[evs[i].row] = evs[i].mask;
+                for (int i = 0; i < npk; i++) if (pks[i].frame == frame && !pks[i].dump) wb(0, pks[i].addr, pks[i].val);
+                if (hook >= 0) { if (npend < 256) pend[npend++] = frame; }
+                else do_dumps(frame);
+            }
+        }
+        // ITER=1: minden esemény a főciklus köreihez kötve (HOOK-találatonként egy kör)
+        if (itermode && cpu.pc == hook) {
+            iter++;
+            for (int i = 0; i < nev; i++) if (evs[i].frame == iter) kb[evs[i].row] = evs[i].mask;
+            for (int i = 0; i < npk; i++) if (pks[i].frame == iter && !pks[i].dump) wb(0, pks[i].addr, pks[i].val);
+            do_dumps(iter);
         }
         // HOOK=cím: a kiolvasás és a képmentés a főciklus nyugalmi pontján (pl. vsync) történik
         if (hook >= 0 && npend && cpu.pc == hook) {

@@ -13,6 +13,11 @@ import gen_tables as G
 from test_shadow import js_shadow
 from test_asm import js_vision
 
+
+def solver_level(i):
+    import solver
+    return solver.Level(i)
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 SIM = os.path.join(HERE, "harness", "tvcsim")
 CAS = os.path.join(HERE, "arnyek.cas")
@@ -24,10 +29,12 @@ ROW_SPACE, BIT_SPACE = 7, 0x20
 ROW_CUR, BIT_RIGHT, BIT_DOWN = 8, 0x20, 0x04
 
 
-def run(script, frames):
+def run(script, frames, iters=False):
     path = os.path.join(HERE, "_t.txt")
     open(path, "w").write("\n".join(script) + "\n")
     env = dict(os.environ, HOOK=str(SYM["vsync"]))
+    if iters:
+        env["ITER"] = "1"
     out = subprocess.run([SIM, CAS, path, str(frames + 30)], capture_output=True, text=True, cwd=HERE, env=env)
     os.remove(path)
     if out.returncode != 0:
@@ -55,7 +62,7 @@ def state_at(d, f):
     sh = [list(d[(f, SYM["SHBUF"] + (y + G.MY) * G.STRIDE + G.MX)]) for y in range(H)]
     clouds = []
     for i in range(v("ncloud")[0]):
-        c = v("clouds", 12)[i * 6:(i + 1) * 6]
+        c = v("clouds", 18)[i * 6:(i + 1) * 6]
         xi = c[4] - 256 if c[4] > 127 else c[4]
         clouds.append(dict(x=xi + c[3] / 256, y=c[2]))
     guards = []
@@ -93,9 +100,14 @@ def main():
         script += dump_state(f)
     d = run(script, frames[-1] + 2)
     seen_qs, last = set(), None
+    lv1 = solver_level(0)
     for f in frames:
         st = state_at(d, f)
         bad = check_world(st)
+        bss = d[(f, SYM["level"])]
+        u = ((st["q"] - lv1.E["q0"]) * 10 + st["mm"]) * 12 + bss[SYM["sub"] - SYM["level"]]
+        if st["state"] == 0 and list(st["guards"]) != list(lv1.guards_at[u // 22]):
+            bad = bad or [("őrök", st["guards"], lv1.guards_at[u // 22])]
         seen_qs.add(st["q"])
         last = st
         if bad:
@@ -155,6 +167,23 @@ def main():
     bad = check_world(st2)
     fails += bool(bad)
     print(f"   2. pálya kezdőképe árnyék/látómező: {'OK' if not bad else bad[:5]}")
+
+    # --- 6. a 2. pálya után a 3., annak megnyerése után vissza az 1. pálya bevezetőjére
+    #     (a kezdő rajzolás kb. 30 képkocka, ezért 40-től)
+    script = [f"poke 40 {SYM['level']} 1", f"poke 40 {SYM['state']} 1",
+              f"key 42 {ROW_SPACE} {BIT_SPACE}", f"key 46 {ROW_SPACE} 0", "shot 90 level3.ppm"] + dump_state(90) + \
+             [f"key 100 {ROW_SPACE} {BIT_SPACE}", f"key 102 {ROW_SPACE} 0",
+              f"poke 110 {pk + 2} 1", f"poke 110 {pk + 5} 1", f"poke 110 {pk + 8} 1",
+              f"poke 110 {SYM['allgot']} 1", f"poke 110 {SYM['got_n']} 3",
+              f"poke 110 {SYM['px']} 30", f"poke 110 {SYM['py']} 10", f"poke 110 {SYM['gacc']} 0",
+              f"key 112 {ROW_CUR} {BIT_RIGHT}", f"key 116 {ROW_CUR} 0", "shot 125 done.ppm"] + dump_state(125) + \
+             [f"key 140 {ROW_SPACE} {BIT_SPACE}", f"key 144 {ROW_SPACE} 0"] + dump_state(190)
+    d = run(script, 192)
+    s3, sw, s1 = state_at(d, 90), state_at(d, 125), state_at(d, 190)
+    ok = s3["level"] == 2 and not check_world(s3) and sw["state"] == 1 and s1["level"] == 0 and s1["state"] == 3
+    fails += not ok
+    print(f"6. 3. pálya kezdőképe {'OK' if not check_world(s3) else 'HIBA'}, megnyerése: állapot={sw['state']}, "
+          f"utána pálya={s1['level'] + 1} állapot={s1['state']} -> {'OK' if ok else 'HIBA'}")
 
     print("MINDEN TESZT RENDBEN" if not fails else f"{fails} HIBA")
     return fails == 0
