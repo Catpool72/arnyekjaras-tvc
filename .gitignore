@@ -1,0 +1,7 @@
+*.bin
+*.lst
+*.sym
+*.ppm
+__pycache__/
+harness/tvcsim
+_t.txt
