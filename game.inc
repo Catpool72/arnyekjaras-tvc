@@ -10,9 +10,9 @@ TILES:  ; 32 csempe x 20 bájt (2 bájt x 10 sor)
 ; 3
         db 156,156,108,108,156,156,108,108,156,156,108,108,156,156,108,108,156,156,108,108
 ; 4
-        db 192,128,192,128,192,128,0,0,128,192,128,192,128,192,0,0,192,128,192,128
+        db 63,42,63,42,63,42,0,0,42,42,42,42,42,42,0,0,63,42,63,42
 ; 5
-        db 255,255,191,106,191,106,191,106,191,106,191,106,191,106,191,106,191,106,234,192
+        db 255,255,191,42,191,42,191,42,191,42,191,42,191,42,191,42,191,42,170,0
 ; 6
         db 204,204,140,8,140,8,140,8,136,0,136,0,140,8,140,8,140,8,136,0
 ; 7
@@ -165,15 +165,13 @@ SFX_INTRO:
         db 3,$8B,$0E,10   ; 523 Hz
         db 6,$D8,$0E,11   ; 659 Hz
         db 0
-SHAPE_0:  ; felhő rx=3.5 ry=2.2: szélesség, magasság, ox, oy, maszk
-        db 9,7,4,3
-        db 0,0,0,0,0,0,0,0,0
-        db 0,0,0,2,2,2,0,0,0
+SHAPE_0:  ; felhő rx=3.5 ry=2: szélesség, magasság, ox, oy, maszk
+        db 9,5,4,2
+        db 0,0,0,0,2,0,0,0,0
         db 0,2,2,2,2,2,2,2,0
         db 0,2,2,2,2,2,2,2,0
         db 0,2,2,2,2,2,2,2,0
-        db 0,0,0,2,2,2,0,0,0
-        db 0,0,0,0,0,0,0,0,0
+        db 0,0,0,0,2,0,0,0,0
 SHAPE_1:  ; felhő rx=4 ry=2.5: szélesség, magasság, ox, oy, maszk
         db 9,7,4,3
         db 0,0,0,0,0,0,0,0,0
@@ -190,16 +188,180 @@ SHAPE_2:  ; felhő rx=3 ry=2: szélesség, magasság, ox, oy, maszk
         db 2,2,2,2,2,2,2
         db 0,2,2,2,2,2,0
         db 0,0,0,2,0,0,0
-SHAPE_3:  ; felhő rx=3.5 ry=2: szélesség, magasság, ox, oy, maszk
-        db 9,5,4,2
-        db 0,0,0,0,2,0,0,0,0
+SHAPE_3:  ; felhő rx=3.5 ry=2.2: szélesség, magasság, ox, oy, maszk
+        db 9,7,4,3
+        db 0,0,0,0,0,0,0,0,0
+        db 0,0,0,2,2,2,0,0,0
         db 0,2,2,2,2,2,2,2,0
         db 0,2,2,2,2,2,2,2,0
         db 0,2,2,2,2,2,2,2,0
-        db 0,0,0,0,2,0,0,0,0
+        db 0,0,0,2,2,2,0,0,0
+        db 0,0,0,0,0,0,0,0,0
 LEVEL_TAB:
-        dw DELIKAPU_DATA,PIACTER_DATA,VARUDVAR_DATA
-LEVEL_COUNT equ 3
+        dw KERTVAROS_DATA,SIKATOROK_DATA,HALPIAC_DATA,DELIKAPU_DATA,RAKPART_DATA,MALOMSOR_DATA,CEHHAZAK_DATA,KASZARNYA_DATA,TEMETOKERT_DATA,PIACTER_DATA,VARUDVAR_DATA,FOTER_DATA,VAROSHAZA_DATA,VAMHAZ_DATA,KINCSTAR_DATA,KOLOSTOR_DATA
+LEVEL_COUNT equ 16
+KERTVAROS_DATA:
+        dw KERTVAROS_TITLE
+        db 30,18,8,0,6
+        db 17   ; épületek: x, y, szélesség, magasság, árnyékosztály
+        db 2,2,1,1,1
+        db 9,2,3,3,1
+        db 7,6,3,3,3
+        db 10,6,2,3,1
+        db 14,6,1,3,1
+        db 15,6,2,3,1
+        db 17,6,3,3,3
+        db 22,6,1,3,1
+        db 23,6,3,3,3
+        db 2,10,1,1,1
+        db 7,10,1,4,3
+        db 8,10,3,4,3
+        db 11,10,1,4,1
+        db 2,15,3,3,3
+        db 5,15,1,3,1
+        db 14,15,1,1,1
+        db 28,15,1,1,1
+        db 30,5,2,2,4,14,4,14,3,15,4,23,4,22,4,28,2,5,7,4,7,3,6,29,7,3,11,5,13,19,10,24,12,24,10,25,11,22,10,28,11,29,13,8,17,10,17,7,17,16,16,15,15,17,15,22,17,24,16,28,17   ; fák
+        db 3,5,3,12,18,30,3   ; csomagok
+        db 2   ; felhők: alak, y, x (8.8)
+        dw SHAPE_0
+        db 3
+        dw 6144
+        dw SHAPE_1
+        db 9
+        dw 3072
+        db 2   ; őrök: körbejár?, pontok száma, pontok
+        db 0,2,2,5,2,9
+        db 0,2,12,9,23,9
+KERTVAROS_TITLE: db "1. KERTVAROS",0
+SIKATOROK_DATA:
+        dw SIKATOROK_TITLE
+        db 1,18,31,11,24
+        db 58   ; épületek: x, y, szélesség, magasság, árnyékosztály
+        db 2,2,2,2,3
+        db 4,2,1,2,3
+        db 6,2,1,2,4
+        db 7,2,1,2,4
+        db 8,2,1,2,3
+        db 11,2,1,2,4
+        db 12,2,1,2,4
+        db 13,2,1,2,4
+        db 15,2,1,2,3
+        db 16,2,1,2,3
+        db 23,2,2,2,4
+        db 2,5,2,3,4
+        db 4,5,1,3,4
+        db 6,5,3,3,3
+        db 9,5,1,3,3
+        db 11,5,1,3,4
+        db 13,5,1,3,4
+        db 15,5,2,2,4
+        db 15,7,2,1,4
+        db 18,5,2,3,3
+        db 20,5,1,3,3
+        db 22,5,1,1,1
+        db 26,5,2,3,4
+        db 28,5,2,3,3
+        db 2,9,2,3,3
+        db 4,9,1,3,3
+        db 6,9,2,3,3
+        db 8,9,2,3,3
+        db 15,10,2,1,4
+        db 15,11,2,1,3
+        db 18,9,1,3,4
+        db 19,9,1,3,3
+        db 20,9,1,3,3
+        db 22,9,2,3,3
+        db 24,9,1,3,4
+        db 26,9,2,3,3
+        db 28,9,1,3,4
+        db 29,9,1,3,3
+        db 6,13,2,2,3
+        db 8,13,1,2,3
+        db 9,13,1,2,4
+        db 11,13,1,2,4
+        db 12,13,2,2,4
+        db 15,13,1,2,4
+        db 16,13,1,2,4
+        db 20,13,1,2,4
+        db 22,13,1,2,4
+        db 23,13,2,2,3
+        db 4,16,1,2,3
+        db 6,16,2,2,3
+        db 8,16,1,2,3
+        db 9,16,1,2,4
+        db 20,16,1,2,3
+        db 22,16,2,2,3
+        db 24,16,1,2,4
+        db 26,16,1,2,3
+        db 27,16,2,2,3
+        db 29,16,1,2,5
+        db 7,19,3,27,2,22,6,22,7,28,14,12,16,16,16   ; fák
+        db 3,5,12,19,4,30,14   ; csomagok
+        db 1   ; felhők: alak, y, x (8.8)
+        dw SHAPE_2
+        db 17
+        dw 5120
+        db 4   ; őrök: körbejár?, pontok száma, pontok
+        db 1,4,21,12,25,12,25,15,21,15
+        db 1,4,25,15,30,15,30,18,25,18
+        db 0,2,10,11,10,18
+        db 0,2,25,3,30,3
+SIKATOROK_TITLE: db "2. SIKATOROK",0
+HALPIAC_DATA:
+        dw HALPIAC_TITLE
+        db 30,1,0,11,6
+        db 36   ; épületek: x, y, szélesség, magasság, árnyékosztály
+        db 2,2,1,2,1
+        db 3,2,3,2,1
+        db 10,2,1,2,1
+        db 11,2,1,2,1
+        db 13,2,1,2,1
+        db 14,2,3,2,3
+        db 17,2,1,2,1
+        db 19,2,2,2,4
+        db 21,2,2,2,3
+        db 23,2,1,2,4
+        db 29,2,1,2,1
+        db 2,5,2,2,3
+        db 4,5,1,2,5
+        db 5,5,2,2,1
+        db 8,5,2,2,4
+        db 10,5,2,2,4
+        db 13,5,1,1,1
+        db 19,5,2,2,4
+        db 21,5,1,2,3
+        db 22,5,2,2,4
+        db 28,5,1,2,4
+        db 2,9,1,1,1
+        db 13,9,1,1,1
+        db 20,9,2,3,4
+        db 22,9,2,3,3
+        db 26,9,2,3,3
+        db 2,13,3,3,3
+        db 5,13,1,3,4
+        db 6,13,1,3,3
+        db 13,13,2,3,3
+        db 15,13,2,3,1
+        db 17,13,1,3,3
+        db 19,13,3,3,3
+        db 22,13,2,3,4
+        db 26,13,1,3,3
+        db 27,13,3,3,4
+        db 11,15,5,16,5,4,10,5,11,5,9,11,10,14,11,17,9,16,9,10,15,8,14   ; fák
+        db 3,3,18,10,1,26,8   ; csomagok
+        db 2   ; felhők: alak, y, x (8.8)
+        dw SHAPE_0
+        db 13
+        dw 3328
+        dw SHAPE_2
+        db 16
+        dw 4352
+        db 3   ; őrök: körbejár?, pontok száma, pontok
+        db 0,2,17,4,17,8
+        db 0,2,7,4,7,9
+        db 0,2,5,10,10,10
+HALPIAC_TITLE: db "3. HALPIAC",0
 DELIKAPU_DATA:
         dw DELIKAPU_TITLE
         db 1,1,28,19,6
@@ -224,14 +386,257 @@ DELIKAPU_DATA:
         db 10,5,1,9,4,29,5,2,9,23,9,15,10,3,13,12,15,25,17,27,2   ; fák
         db 3,16,1,14,7,29,14   ; csomagok
         db 1   ; felhők: alak, y, x (8.8)
-        dw SHAPE_0
+        dw SHAPE_3
         db 9
         dw 64512
         db 3   ; őrök: körbejár?, pontok száma, pontok
         db 0,2,13,9,22,9
         db 0,2,22,4,22,16
         db 0,2,2,12,10,12
-DELIKAPU_TITLE: db "1. DELI KAPU",0
+DELIKAPU_TITLE: db "4. DELI KAPU",0
+RAKPART_DATA:
+        dw RAKPART_TITLE
+        db 1,1,31,5,6
+        db 23   ; épületek: x, y, szélesség, magasság, árnyékosztály
+        db 2,2,2,3,5
+        db 4,2,1,3,4
+        db 5,2,1,3,3
+        db 8,2,4,3,5
+        db 12,2,1,3,5
+        db 13,2,1,3,3
+        db 16,2,1,1,1
+        db 3,6,3,3,5
+        db 16,6,2,3,3
+        db 18,6,1,3,5
+        db 21,6,1,3,3
+        db 22,6,2,3,5
+        db 24,6,1,3,4
+        db 3,10,2,3,4
+        db 5,10,1,3,3
+        db 16,10,1,3,5
+        db 17,10,1,3,5
+        db 26,10,3,3,4
+        db 29,10,1,3,5
+        db 2,14,3,2,5
+        db 5,14,1,2,4
+        db 8,14,2,2,3
+        db 26,14,2,2,4
+        db 6,16,3,18,2,24,3,12,6,8,12,22,11   ; fák
+        db 3,2,18,14,2,30,14   ; csomagok
+        db 1   ; felhők: alak, y, x (8.8)
+        dw SHAPE_1
+        db 17
+        dw 5120
+        db 3   ; őrök: körbejár?, pontok száma, pontok
+        db 0,2,22,12,22,18
+        db 0,2,23,1,23,5
+        db 0,2,18,13,18,18
+RAKPART_TITLE: db "5. RAKPART",0
+MALOMSOR_DATA:
+        dw MALOMSOR_TITLE
+        db 1,18,31,15,18
+        db 28   ; épületek: x, y, szélesség, magasság, árnyékosztály
+        db 6,2,3,3,1
+        db 9,2,1,3,5
+        db 11,2,3,3,3
+        db 14,2,1,3,4
+        db 17,2,1,3,3
+        db 18,2,3,3,4
+        db 23,2,1,3,1
+        db 24,2,3,3,1
+        db 27,2,1,3,3
+        db 2,6,1,3,4
+        db 3,6,2,3,4
+        db 17,6,3,3,3
+        db 20,6,2,3,1
+        db 25,6,3,3,1
+        db 2,10,2,3,4
+        db 4,10,1,3,4
+        db 11,10,1,3,3
+        db 12,10,2,3,1
+        db 14,10,1,3,4
+        db 17,10,1,3,4
+        db 18,10,3,3,3
+        db 21,10,1,3,3
+        db 23,10,3,3,3
+        db 26,10,2,3,4
+        db 9,14,1,4,4
+        db 11,14,1,1,1
+        db 23,14,1,4,4
+        db 24,14,1,4,5
+        db 14,3,4,4,4,6,8,7,6,7,11,6,10,6,11,2,16,4,15,3,16,13,17,11,17,12,14,11,15   ; fák
+        db 3,1,3,13,14,29,6   ; csomagok
+        db 2   ; felhők: alak, y, x (8.8)
+        dw SHAPE_2
+        db 16
+        dw 256
+        dw SHAPE_3
+        db 6
+        dw 4608
+        db 4   ; őrök: körbejár?, pontok száma, pontok
+        db 0,2,18,13,18,18
+        db 1,4,22,5,28,5,28,9,22,9
+        db 1,4,16,9,22,9,22,13,16,13
+        db 0,2,8,8,16,8
+MALOMSOR_TITLE: db "6. MALOMSOR",0
+CEHHAZAK_DATA:
+        dw CEHHAZAK_TITLE
+        db 1,18,15,0,12
+        db 43   ; épületek: x, y, szélesség, magasság, árnyékosztály
+        db 2,2,2,2,4
+        db 2,4,2,1,4
+        db 5,2,1,3,4
+        db 6,2,2,3,4
+        db 8,2,1,3,3
+        db 10,2,2,2,4
+        db 13,4,2,1,3
+        db 16,2,1,3,3
+        db 17,2,1,3,3
+        db 18,2,2,3,3
+        db 21,2,2,1,4
+        db 21,3,2,2,4
+        db 24,2,3,3,3
+        db 27,2,1,3,3
+        db 2,6,2,1,3
+        db 2,7,2,1,3
+        db 2,8,2,1,3
+        db 13,7,2,1,4
+        db 13,8,2,1,4
+        db 21,6,2,2,5
+        db 21,8,2,1,3
+        db 2,11,2,1,4
+        db 2,12,2,1,3
+        db 5,10,3,3,3
+        db 8,10,1,3,4
+        db 13,10,2,1,3
+        db 13,11,2,2,4
+        db 16,10,2,3,4
+        db 24,10,2,3,3
+        db 26,10,1,3,3
+        db 27,10,1,3,3
+        db 2,14,2,1,3
+        db 2,15,2,3,4
+        db 5,14,3,4,3
+        db 8,14,1,4,4
+        db 13,14,2,1,4
+        db 13,15,2,1,4
+        db 13,16,2,2,3
+        db 21,14,2,1,4
+        db 21,15,2,1,3
+        db 21,16,2,2,4
+        db 24,14,3,4,4
+        db 27,14,1,4,5
+        db 8,8,7,17,8,27,6,21,11,18,15,18,16,19,17,19,14   ; fák
+        db 3,4,5,12,17,30,6   ; csomagok
+        db 2   ; felhők: alak, y, x (8.8)
+        dw SHAPE_2
+        db 10
+        dw 2560
+        dw SHAPE_0
+        db 14
+        dw 512
+        db 3   ; őrök: körbejár?, pontok száma, pontok
+        db 0,2,11,4,11,11
+        db 0,2,25,5,25,9
+        db 0,2,7,5,7,9
+CEHHAZAK_TITLE: db "7. CEHHAZAK",0
+KASZARNYA_DATA:
+        dw KASZARNYA_TITLE
+        db 1,1,14,19,42
+        db 48   ; épületek: x, y, szélesség, magasság, árnyékosztály
+        db 2,2,1,1,1
+        db 7,2,2,2,4
+        db 9,2,1,2,4
+        db 11,2,2,2,3
+        db 13,2,2,2,4
+        db 22,2,1,2,1
+        db 23,2,3,2,1
+        db 26,2,1,2,3
+        db 28,2,1,2,3
+        db 29,2,1,2,3
+        db 2,5,1,2,1
+        db 4,5,2,2,3
+        db 7,5,2,2,1
+        db 9,5,1,2,3
+        db 11,5,2,2,3
+        db 13,5,1,2,3
+        db 14,5,1,2,3
+        db 19,5,1,2,1
+        db 20,5,1,2,4
+        db 22,5,3,2,1
+        db 25,5,2,2,1
+        db 7,8,2,2,1
+        db 9,8,1,2,3
+        db 11,8,2,2,3
+        db 13,8,1,2,4
+        db 14,8,1,2,3
+        db 16,8,2,2,3
+        db 18,8,1,2,1
+        db 19,8,2,2,3
+        db 22,8,1,2,4
+        db 23,8,2,2,4
+        db 25,8,2,2,3
+        db 28,8,2,2,1
+        db 2,11,2,4,3
+        db 11,11,3,4,1
+        db 14,11,1,4,4
+        db 16,11,2,4,4
+        db 18,11,1,4,1
+        db 22,11,1,4,3
+        db 23,11,2,4,4
+        db 25,11,2,4,4
+        db 28,11,2,3,1
+        db 28,14,2,1,4
+        db 5,16,1,2,4
+        db 18,16,1,2,3
+        db 19,16,2,2,1
+        db 22,16,1,1,1
+        db 29,16,1,2,3
+        db 8,5,2,29,5,3,8,2,8,7,11,9,16,22,17,23,16   ; fák
+        db 3,3,16,18,5,30,15   ; csomagok
+        db 1   ; felhők: alak, y, x (8.8)
+        dw SHAPE_2
+        db 9
+        dw 3584
+        db 5   ; őrök: körbejár?, pontok száma, pontok
+        db 1,4,1,15,6,15,6,18,1,18
+        db 0,2,4,7,4,17
+        db 1,4,15,4,21,4,21,7,15,7
+        db 1,4,27,4,30,4,30,7,27,7
+        db 0,2,17,1,17,7
+KASZARNYA_TITLE: db "8. KASZARNYA",0
+TEMETOKERT_DATA:
+        dw TEMETOKERT_TITLE
+        db 1,18,17,0,12
+        db 17   ; épületek: x, y, szélesség, magasság, árnyékosztály
+        db 10,2,2,3,3
+        db 13,2,1,3,1
+        db 14,2,1,3,1
+        db 16,2,2,3,1
+        db 18,2,2,3,5
+        db 20,2,2,3,1
+        db 23,2,1,3,3
+        db 24,2,3,3,3
+        db 27,2,1,3,3
+        db 2,10,2,3,1
+        db 4,10,3,3,1
+        db 7,10,1,3,3
+        db 10,10,1,3,5
+        db 11,10,1,3,3
+        db 12,10,3,3,3
+        db 6,15,2,3,1
+        db 23,15,1,1,1
+        db 28,5,4,2,4,3,2,7,2,5,6,6,7,4,7,6,6,14,6,10,6,13,7,18,7,16,8,21,7,18,6,27,8,25,10,24,12,27,10,28,11,23,10,13,17,12,16,20,15,26,16,24,15,27,17,29,17   ; fák
+        db 3,1,4,14,16,29,2   ; csomagok
+        db 1   ; felhők: alak, y, x (8.8)
+        dw SHAPE_0
+        db 5
+        dw 64512
+        db 3   ; őrök: körbejár?, pontok száma, pontok
+        db 0,2,25,5,25,9
+        db 1,4,9,5,15,5,15,9,9,9
+        db 0,2,18,13,18,18
+TEMETOKERT_TITLE: db "9. TEMETOKERT",0
 PIACTER_DATA:
         dw PIACTER_TITLE
         db 1,18,16,0,12
@@ -266,7 +671,7 @@ PIACTER_DATA:
         db 0,2,1,6,1,13
         db 0,2,13,2,22,2
         db 0,2,25,6,25,13
-PIACTER_TITLE: db "2. PIACTER",0
+PIACTER_TITLE: db "10. PIACTER",0
 VARUDVAR_DATA:
         dw VARUDVAR_TITLE
         db 1,10,31,10,36
@@ -285,7 +690,7 @@ VARUDVAR_DATA:
         db 8,11,5,20,5,11,14,21,13,6,10,28,9,16,3,16,16   ; fák
         db 3,27,4,15,14,4,13   ; csomagok
         db 3   ; felhők: alak, y, x (8.8)
-        dw SHAPE_3
+        dw SHAPE_0
         db 4
         dw 3584
         dw SHAPE_1
@@ -299,4 +704,205 @@ VARUDVAR_DATA:
         db 0,2,2,4,2,15
         db 0,2,24,5,29,5
         db 0,3,25,8,25,14,29,14
-VARUDVAR_TITLE: db "3. VARUDVAR",0
+VARUDVAR_TITLE: db "11. VARUDVAR",0
+FOTER_DATA:
+        dw FOTER_TITLE
+        db 30,1,0,6,24
+        db 18   ; épületek: x, y, szélesség, magasság, árnyékosztály
+        db 2,2,3,4,3
+        db 7,3,3,1,3
+        db 7,4,3,2,4
+        db 18,2,1,4,5
+        db 19,2,1,4,3
+        db 22,2,1,4,4
+        db 5,7,1,2,3
+        db 7,7,2,2,4
+        db 9,7,1,2,5
+        db 18,7,2,2,4
+        db 20,7,2,2,4
+        db 22,7,1,2,4
+        db 25,7,2,2,3
+        db 12,10,1,1,1
+        db 25,10,1,2,5
+        db 26,10,2,2,5
+        db 7,14,2,2,5
+        db 9,14,1,2,5
+        db 5,12,3,14,11,20,10,5,14,18,14   ; fák
+        db 3,1,17,11,2,30,13   ; csomagok
+        db 2   ; felhők: alak, y, x (8.8)
+        dw SHAPE_0
+        db 10
+        dw 64256
+        dw SHAPE_2
+        db 10
+        dw 65280
+        db 4   ; őrök: körbejár?, pontok száma, pontok
+        db 0,2,13,10,19,10
+        db 1,4,6,9,10,9,10,12,6,12
+        db 1,4,1,13,6,13,6,16,1,16
+        db 0,2,27,13,27,18
+FOTER_TITLE: db "12. FOTER",0
+VAROSHAZA_DATA:
+        dw VAROSHAZA_TITLE
+        db 1,18,12,0,36
+        db 20   ; épületek: x, y, szélesség, magasság, árnyékosztály
+        db 2,2,2,3,3
+        db 4,2,1,3,5
+        db 7,2,1,3,5
+        db 8,2,1,3,3
+        db 9,2,2,3,5
+        db 12,2,3,3,4
+        db 15,2,3,3,3
+        db 2,7,1,2,5
+        db 3,7,1,2,3
+        db 4,7,1,2,4
+        db 9,7,2,2,3
+        db 26,7,3,2,3
+        db 29,7,1,2,5
+        db 7,10,3,2,4
+        db 10,10,1,2,4
+        db 2,14,3,2,3
+        db 2,16,3,1,3
+        db 2,17,3,1,4
+        db 19,14,1,4,3
+        db 23,14,1,4,4
+        db 7,22,3,27,2,22,8,17,10,7,14,28,15,27,17   ; fák
+        db 3,4,1,11,17,30,5   ; csomagok
+        db 2   ; felhők: alak, y, x (8.8)
+        dw SHAPE_2
+        db 9
+        dw 6144
+        dw SHAPE_2
+        db 12
+        dw 3840
+        db 5   ; őrök: körbejár?, pontok száma, pontok
+        db 0,2,11,18,20,18
+        db 0,2,18,8,18,18
+        db 0,2,9,12,9,18
+        db 1,4,25,6,30,6,30,9,25,9
+        db 0,2,3,9,3,13
+VAROSHAZA_TITLE: db "13. VAROSHAZA",0
+VAMHAZ_DATA:
+        dw VAMHAZ_TITLE
+        db 30,18,15,0,18
+        db 22   ; épületek: x, y, szélesség, magasság, árnyékosztály
+        db 2,2,3,3,1
+        db 7,2,1,4,1
+        db 8,2,3,4,1
+        db 11,2,1,4,4
+        db 18,2,3,4,4
+        db 21,2,1,4,3
+        db 26,2,1,4,1
+        db 27,2,1,4,4
+        db 2,7,3,2,5
+        db 2,9,3,2,3
+        db 7,7,3,4,4
+        db 10,7,2,4,3
+        db 16,7,1,4,4
+        db 26,7,1,4,1
+        db 27,7,1,4,3
+        db 2,14,3,1,1
+        db 2,15,3,1,5
+        db 18,12,2,4,4
+        db 20,12,2,4,1
+        db 23,12,1,4,4
+        db 24,12,2,4,3
+        db 26,12,2,4,1
+        db 7,15,4,13,5,15,2,14,14,14,15,15,12,14,13   ; fák
+        db 3,1,1,9,15,28,10   ; csomagok
+        db 1   ; felhők: alak, y, x (8.8)
+        dw SHAPE_2
+        db 16
+        dw 5376
+        db 4   ; őrök: körbejár?, pontok száma, pontok
+        db 0,2,10,13,10,18
+        db 1,4,6,6,12,6,12,11,6,11
+        db 0,2,19,11,28,11
+        db 0,2,1,5,6,5
+VAMHAZ_TITLE: db "14. VAMHAZ",0
+KINCSTAR_DATA:
+        dw KINCSTAR_TITLE
+        db 30,18,19,0,36
+        db 25   ; épületek: x, y, szélesség, magasság, árnyékosztály
+        db 2,2,1,3,5
+        db 3,2,1,3,3
+        db 4,2,1,3,5
+        db 6,2,4,3,4
+        db 10,2,1,3,5
+        db 11,2,1,3,3
+        db 6,6,3,2,3
+        db 9,6,3,2,5
+        db 19,6,2,2,4
+        db 21,6,1,2,3
+        db 23,6,1,2,5
+        db 24,6,1,2,5
+        db 28,6,2,2,3
+        db 2,10,3,2,5
+        db 2,12,3,1,5
+        db 2,13,3,1,4
+        db 17,10,1,4,3
+        db 19,11,3,3,4
+        db 23,10,3,3,5
+        db 23,13,3,1,5
+        db 28,10,1,1,1
+        db 6,16,4,2,3
+        db 10,16,2,2,3
+        db 23,16,2,2,4
+        db 25,16,1,2,4
+        db 9,17,4,29,3,2,6,7,11,28,13,29,12,17,16,19,17,29,17   ; fák
+        db 3,2,5,15,15,28,5   ; csomagok
+        db 1   ; felhők: alak, y, x (8.8)
+        dw SHAPE_1
+        db 9
+        dw 64256
+        db 6   ; őrök: körbejár?, pontok száma, pontok
+        db 0,2,21,1,21,5
+        db 1,4,13,9,18,9,18,14,13,14
+        db 0,2,3,5,3,9
+        db 0,2,14,5,14,14
+        db 0,2,12,17,17,17
+        db 0,2,15,7,15,14
+KINCSTAR_TITLE: db "15. KINCSTAR",0
+KOLOSTOR_DATA:
+        dw KOLOSTOR_TITLE
+        db 30,18,0,4,30
+        db 23   ; épületek: x, y, szélesség, magasság, árnyékosztály
+        db 18,2,1,3,3
+        db 19,2,3,3,4
+        db 22,2,1,3,4
+        db 24,2,1,3,3
+        db 25,2,1,3,4
+        db 26,2,1,3,3
+        db 9,7,2,3,3
+        db 11,7,1,3,4
+        db 18,7,3,3,3
+        db 24,7,2,3,4
+        db 26,7,1,3,4
+        db 8,11,2,3,3
+        db 10,11,1,3,4
+        db 11,11,1,3,4
+        db 18,11,5,3,5
+        db 28,11,1,1,1
+        db 8,15,2,3,3
+        db 10,15,1,3,4
+        db 13,15,2,3,4
+        db 15,15,2,3,4
+        db 18,15,1,3,4
+        db 19,15,1,3,3
+        db 20,15,3,3,4
+        db 8,5,2,2,3,13,4,2,7,28,12,2,17,26,16,24,17   ; fák
+        db 3,2,13,12,2,27,10   ; csomagok
+        db 2   ; felhők: alak, y, x (8.8)
+        dw SHAPE_2
+        db 6
+        dw 5376
+        dw SHAPE_3
+        db 3
+        dw 5632
+        db 5   ; őrök: körbejár?, pontok száma, pontok
+        db 0,2,23,10,23,14
+        db 0,2,11,1,11,6
+        db 0,2,26,10,26,15
+        db 1,4,1,10,7,10,7,14,1,14
+        db 0,2,1,11,6,11
+KOLOSTOR_TITLE: db "16. KOLOSTOR",0

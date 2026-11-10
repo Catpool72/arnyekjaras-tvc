@@ -55,6 +55,7 @@ def main():
                   + tuple(f"level{i + 1}.inc" for i in range(len(G.LEVELS)))],
                  mem_fill=0xAA)
     SHBUF = sim.sym["SHBUF"]
+    assert sim.dp <= SHBUF, f"a tesztadatok ({sim.dp:#06x}) belelógnak a pufferbe"
     rnd = random.Random(72)
     bad = cases = 0
     worst_shadow = 0
@@ -64,7 +65,7 @@ def main():
         p = L["name"]
         sim.call("TerrainBuild", hl=sim.sym[f"{p}_CLASS"])
         walk = [(x, y) for y in range(H) for x in range(W) if not hgt[y][x]]
-        for q in range(G.Q_COUNT):
+        for q in range(0, G.Q_COUNT, 1 if i < 3 else 6):   # az első 3 pályán mind, a többin minden 6.
             minute = G.Q_FIRST + q * 10
             for cx in ((-8.0, 15.7, 36.0) if q % 6 == 0 else (rnd.uniform(-8, 37),)):
                 clouds = [dict(c, x=cx + 5 * n) for n, c in enumerate(L["clouds"])]

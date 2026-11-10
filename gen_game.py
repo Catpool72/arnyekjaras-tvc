@@ -43,7 +43,8 @@ SHD = [r.replace("o", "n").replace("y", "b") for r in LIT]
 CLD = ["nnnn", "ntnn", "nnnn", "nnnt", "nnnn", "tnnn", "nnnn", "nntn", "nnnn", "nnnn"]
 SEEN = ["roro" if i % 2 == 0 else "oror" for i in range(10)]
 GROUNDS = [LIT, SHD, CLD, SEEN]
-WALL = ["dddk", "dddk", "dddk", "kkkk", "dkdd", "dkdd", "dkdd", "kkkk", "dddk", "dddk"]
+# a 8-as szín (csak I) a TVC-n fekete, ezért a fal szürke (7) fekete fugákkal
+WALL = ["sssk", "sssk", "sssk", "kkkk", "sksk", "sksk", "sksk", "kkkk", "sssk", "sssk"]
 
 
 def roof(b, hi, lo, h):
@@ -88,7 +89,7 @@ def tiles():
         t[E_GUARD + g] = over(gr, GUARD)
         t[E_TREE + g] = over(gr, TREE)
     t[T_WALL] = WALL
-    t[5] = roof("s", "w", "d", 1)
+    t[5] = roof("s", "w", "k", 1)
     t[6] = roof("m", "r", "k", 2)
     t[7] = roof("p", "M", "k", 3)
     t[8] = roof("t", "c", "k", 4)
@@ -130,19 +131,26 @@ def font():
 
 
 # ---- pályák kiegészítő adatai (a demóval azonosak)
-EXTRA = {
-    "DELIKAPU": dict(title="1. DELI KAPU", start=(1, 1), q0=(7 * 60 - G.Q_FIRST) // 10,
-                     pkg=[(16, 1), (14, 7), (29, 14)], cloud_x=[-4.0],
-                     paths=[(False, [(13, 9), (22, 9)]), (False, [(22, 4), (22, 16)]), (False, [(2, 12), (10, 12)])]),
-    "PIACTER": dict(title="2. PIACTER", start=(1, 18), q0=(8 * 60 - G.Q_FIRST) // 10,
-                    pkg=[(27, 1), (4, 7), (16, 9)], cloud_x=[-6.0, 12.0],
-                    paths=[(True, [(11, 7), (19, 7), (19, 12), (11, 12)]), (False, [(1, 6), (1, 13)]),
-                           (False, [(13, 2), (22, 2)]), (False, [(25, 6), (25, 13)])]),
-    "VARUDVAR": dict(title="3. VARUDVAR", start=(1, 10), q0=(12 * 60 - G.Q_FIRST) // 10,
-                     pkg=[(27, 4), (15, 14), (4, 13)], cloud_x=[14.0, 8.0, 20.0],
-                     paths=[(True, [(12, 6), (19, 6), (19, 13), (12, 13)]), (False, [(2, 4), (2, 15)]),
-                            (False, [(24, 5), (29, 5)]), (False, [(25, 8), (25, 14), (29, 14)])]),
-}
+import levels as _LV
+
+
+def _q0(t):
+    h, m = map(int, t.split(":"))
+    return (h * 60 + m - G.Q_FIRST) // 10
+
+
+EXTRA = {}
+
+
+def reload_levels():
+    EXTRA.clear()
+    EXTRA.update({L["key"]: dict(title=f"{i + 1}. {L['name']}", start=tuple(L["start"]), q0=_q0(L["time"]),
+                                 pkg=[tuple(p) for p in L["pkg"]], cloud_x=[c["x"] for c in L["clouds"]],
+                                 paths=[(lp, [tuple(p) for p in pts]) for lp, pts in L["guards"]])
+                  for i, L in enumerate(_LV.LEVELS)})
+
+
+reload_levels()
 ROOF_OF_CLASS = {1: 5, 3: 6, 4: 7, 5: 8}
 
 

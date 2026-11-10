@@ -75,10 +75,10 @@ static void pout(z80 *z, uint8_t port, uint8_t v) {
 }
 static void rgb(uint8_t c, uint8_t *o) {
     int i = (c >> 6) & 1, g = (c >> 4) & 1, r = (c >> 2) & 1, b = c & 1;
-    int hi = i ? 255 : 170;
-    o[0] = r ? hi : (i && !r && !g && !b ? 85 : 0);
-    o[1] = g ? hi : (i && !r && !g && !b ? 85 : 0);
-    o[2] = b ? hi : (i && !r && !g && !b ? 85 : 0);
+    int hi = i ? 255 : 146;     // ep128emu: nem világos szín 4/7 fényerő; a csak-I szín fekete
+    o[0] = r ? hi : 0;
+    o[1] = g ? hi : 0;
+    o[2] = b ? hi : 0;
 }
 static void shot(const char *name) {
     FILE *f = fopen(name, "wb");

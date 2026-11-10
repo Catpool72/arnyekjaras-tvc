@@ -1856,7 +1856,7 @@ pkgs        ds 3*3
 ncloud      ds 1
 clouds      ds 3*C_SIZE
 nguard      ds 1
-guards      ds 4*G_SIZE
+guards      ds 6*G_SIZE         ; legfeljebb 6 őr
 BSS_LEN     equ $ - BSS
         ASSERT $ < $FF00
 

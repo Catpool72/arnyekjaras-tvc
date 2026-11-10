@@ -96,10 +96,12 @@ class Level:
 MOVED = 8          # a maszk 3. bitje: lépett-e már (az árnyékjáró-szabályhoz)
 
 
-def solve(idx, verbose=True, shadow_only=False):
+def solve(idx, verbose=True, shadow_only=False, move=MOVE, lv=None):
     """Leggyorsabb győztes út. shadow_only: az első lépés után nem állhat napos mezőn
-    (a játék minden kör végén nézi: lépésnél u+1..u+5, várakozásnál u+8)."""
-    lv = Level(idx)
+    (a játék minden kör végén nézi: lépésnél u+1..u+5, várakozásnál u+8).
+    move: egy lépés ideje képkockában (5 = a játék ismétlési tempója; nagyobb = lassabb játékos).
+    lv: egy már felépített Level (a gyorsítótárával együtt) újrahasznosítása."""
+    lv = lv or Level(idx)
     pk = {p: i for i, p in enumerate(lv.E["pkg"])}
     full = (1 << len(pk)) - 1
     gate = tuple(lv.L["gate"])
@@ -132,7 +134,7 @@ def solve(idx, verbose=True, shadow_only=False):
                         continue
                     if (nx, ny) == gate and mask & 7 != full:
                         continue
-                    nu = u + MOVE
+                    nu = u + move
                     if nu > lv.u_end or any(lv.unsafe(nx, ny, t) for t in range(u, nu + 1)):
                         continue
                     if shadow_only and (nx, ny) != gate and any(lv.lit(nx, ny, t) for t in range(u + 1, nu + 1)):

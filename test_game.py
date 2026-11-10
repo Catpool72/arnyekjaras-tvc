@@ -3,10 +3,14 @@
 
 1. Árnyék + látómező: várakozás közben (szóköz nyomva) több időpontban kiolvassa a
    SHBUF-ot, az órát, a felhőket és az őrök helyét, és összeveti a demó számításával.
-2. Mozgás: jobbra lépés, megáll a fánál.
+2. Mozgás: egyenesen a kezdőhelyről, megáll a falnál vagy épületnél.
 3. Lebukás: a játékos egy látott mezőre kerül.
 4. Kapuzárás: 17:59 után.
 5. Győzelem: minden csomag felvéve, lépés a kapura, majd a 2. pálya indul.
+6. Az utolsó pálya: kezdőkép, megnyerése, játék vége, 24 bites pontszám, új játék.
+7. A felépített térképek minden pályán.
+8. Életek, játék vége, rekord.
+A koordinátákat a pályaadatokból számolja (testlv.py), így bármely pályasorrendre érvényes.
 """
 import os, re, subprocess, sys
 import gen_tables as G
@@ -67,7 +71,7 @@ def state_at(d, f):
         clouds.append(dict(x=xi + c[3] / 256, y=c[2]))
     guards = []
     for i in range(v("nguard")[0]):
-        g = v("guards", 32)[i * 8:(i + 1) * 8]
+        g = v("guards", 48)[i * 8:(i + 1) * 8]
         guards.append((g[0], g[1]))
     return dict(level=v("level")[0], state=v("state")[0], q=v("q")[0], mm=v("mm")[0],
                 px=v("px")[0], py=v("py")[0], clouds=clouds, guards=guards, sh=sh,
@@ -89,7 +93,26 @@ def check_world(st):
     return bad
 
 
+def seen_step():
+    """Az 1. pálya indulása után egy őr által látott mező, és egy szomszédja, ahonnan rálép:
+    (honnan, billentyű, hova). A tesztben a játékost a szomszédra tesszük, és rálép."""
+    import testlv as TL
+    st0 = state_at(run([f"key 30 {ROW_SPACE} {BIT_SPACE}", f"key 32 {ROW_SPACE} 0"] + dump_state(40), 42), 40)
+    for y in range(H):
+        for x in range(W):
+            if st0["sh"][y][x] == 3 and all(abs(x - gx) + abs(y - gy) > 2 for gx, gy in st0["guards"]):
+                try:
+                    frm, bit = TL.approach(0, (x, y))
+                except ValueError:
+                    continue
+                if st0["sh"][frm[1]][frm[0]] != 3:
+                    return frm, bit, (x, y)
+    raise SystemExit("nincs látott mező az 1. pálya elején")
+
+
 def main():
+    import testlv as TL
+    NL = len(G.LEVELS)
     fails = 0
 
     # --- 1. árnyék és látómező várakozás közben
@@ -116,23 +139,19 @@ def main():
     print(f"1. árnyék/látómező: {len(frames)} kiolvasás, {len(seen_qs)} napállás, "
           f"utolsó állapot={last['state']} q={last['q']}  -> {'OK' if not fails else 'HIBA'}")
 
-    # --- 2. mozgás: (1,1)-ről jobbra, a fa (5,1)-nél megáll
+    # --- 2. mozgás: a kezdőhelyről egyenesen, amíg fal vagy épület meg nem állítja
+    bit, stop, cells = TL.safe_run(0)
+    hold = 20 + 12 * len(cells)
     script = [f"key 30 {ROW_SPACE} {BIT_SPACE}", f"key 32 {ROW_SPACE} 0",
-              f"key 40 {ROW_CUR} {BIT_RIGHT}", f"key 90 {ROW_CUR} 0"] + dump_state(95)
-    st = state_at(run(script, 97), 95)
-    ok = (st["px"], st["py"]) == (4, 1)
+              f"key 40 {ROW_CUR} {bit}", f"key {40 + hold} {ROW_CUR} 0"] + dump_state(45 + hold)
+    st = state_at(run(script, 47 + hold), 45 + hold)
+    ok = (st["px"], st["py"]) == stop and st["state"] == 0
     fails += not ok
-    print(f"2. mozgás: játékos itt: ({st['px']},{st['py']}), várt (4,1) -> {'OK' if ok else 'HIBA'}")
+    print(f"2. mozgás: játékos itt: ({st['px']},{st['py']}), várt {stop} -> {'OK' if ok else 'HIBA'}")
 
     # --- 3. lebukás: egy látott mezőre tesszük a játékost
-    st0 = state_at(run([f"key 30 {ROW_SPACE} {BIT_SPACE}", f"key 32 {ROW_SPACE} 0"] + dump_state(40), 42), 40)
-    seen = [(x, y) for y in range(H) for x in range(W) if st0["sh"][y][x] == 3
-            and all(abs(x - gx) + abs(y - gy) > 1 for gx, gy in st0["guards"])]
-    x, y = seen[0]
-    # a mellette lévő szabad mezőről lépünk rá
-    hgt = G.height_map(G.LEVELS[0])
-    nx = next((x + dx, y + dy, key) for dx, dy, key in ((-1, 0, BIT_RIGHT), (0, -1, BIT_DOWN))
-              if not hgt[y + dy][x + dx])
+    frm, bit, (x, y) = seen_step()
+    nx = (frm[0], frm[1], bit)
     script = [f"key 30 {ROW_SPACE} {BIT_SPACE}", f"key 32 {ROW_SPACE} 0",
               f"poke 41 {SYM['px']} {nx[0]}", f"poke 41 {SYM['py']} {nx[1]}",
               f"poke 41 {SYM['gacc']} 0",
@@ -152,12 +171,13 @@ def main():
 
     # --- 5. győzelem: csomagok felvéve, a kapu fölé tesszük, lefelé lép
     pk = SYM["pkgs"]
+    (gx, gy), gbit = TL.gate_approach(0)
     script = [f"key 30 {ROW_SPACE} {BIT_SPACE}", f"key 32 {ROW_SPACE} 0",
               f"poke 40 {pk + 2} 1", f"poke 40 {pk + 5} 1", f"poke 40 {pk + 8} 1",
               f"poke 40 {SYM['allgot']} 1", f"poke 40 {SYM['got_n']} 3",
-              f"poke 40 {SYM['px']} 28", f"poke 40 {SYM['py']} 18", f"poke 40 {SYM['gacc']} 0",
+              f"poke 40 {SYM['px']} {gx}", f"poke 40 {SYM['py']} {gy}", f"poke 40 {SYM['gacc']} 0",
               f"poke 40 {SYM['need_redraw']} 1",
-              f"key 42 {ROW_CUR} {BIT_DOWN}", f"key 46 {ROW_CUR} 0", "shot 50 win.ppm"] + dump_state(48) + \
+              f"key 42 {ROW_CUR} {gbit}", f"key 46 {ROW_CUR} 0", "shot 50 win.ppm"] + dump_state(48) + \
              [f"key 60 {ROW_SPACE} {BIT_SPACE}", f"key 62 {ROW_SPACE} 0", "shot 90 level2.ppm"] + dump_state(90)
     d = run(script, 92)
     st, st2 = state_at(d, 48), state_at(d, 90)
@@ -168,16 +188,17 @@ def main():
     fails += bool(bad)
     print(f"   2. pálya kezdőképe árnyék/látómező: {'OK' if not bad else bad[:5]}")
 
-    # --- 6. a 2. pálya után a 3., annak megnyerése után játék vége, majd új játék
+    # --- 6. az utolsó előtti pálya után az utolsó, annak megnyerése után játék vége, majd új játék
     #     (a kezdő rajzolás kb. 30 képkocka, ezért 40-től)
-    script = [f"poke 40 {SYM['level']} 1", f"poke 40 {SYM['state']} 1",
+    (gx, gy), gbit = TL.gate_approach(NL - 1)
+    script = [f"poke 40 {SYM['level']} {NL - 2}", f"poke 40 {SYM['state']} 1",
               f"key 42 {ROW_SPACE} {BIT_SPACE}", f"key 46 {ROW_SPACE} 0", "shot 90 level3.ppm"] + dump_state(90) + \
              [f"key 100 {ROW_SPACE} {BIT_SPACE}", f"key 102 {ROW_SPACE} 0",
               f"poke 110 {pk + 2} 1", f"poke 110 {pk + 5} 1", f"poke 110 {pk + 8} 1",
               f"poke 110 {SYM['allgot']} 1", f"poke 110 {SYM['got_n']} 3",
               f"poke 110 {SYM['score']} {65000 & 255}", f"poke 110 {SYM['score'] + 1} {65000 >> 8}",
-              f"poke 110 {SYM['px']} 30", f"poke 110 {SYM['py']} 10", f"poke 110 {SYM['gacc']} 0",
-              f"key 112 {ROW_CUR} {BIT_RIGHT}", f"key 116 {ROW_CUR} 0", "shot 125 done.ppm"] + dump_state(125) + \
+              f"poke 110 {SYM['px']} {gx}", f"poke 110 {SYM['py']} {gy}", f"poke 110 {SYM['gacc']} 0",
+              f"key 112 {ROW_CUR} {gbit}", f"key 116 {ROW_CUR} 0", "shot 125 done.ppm"] + dump_state(125) + \
              [f"dump 125 {SYM['score']} 3", f"dump 125 {SYM['last_pts']} 3"] + \
              [f"key 140 {ROW_SPACE} {BIT_SPACE}", f"key 144 {ROW_SPACE} 0"] + dump_state(150) + \
              [f"dump 150 {SYM['hiscore']} 3", "shot 150 record.ppm"] + \
@@ -188,14 +209,14 @@ def main():
     sc, lp, hs = b3(125, "score"), b3(125, "last_pts"), b3(150, "hiscore")
     ok24 = sc == 65000 + lp and sc > 65535 and hs == sc
     print(f"   24 bites pontszám: 65000 + {lp} = {sc}, rekord {hs} -> {'OK' if ok24 else 'HIBA'}")
-    ok = s3["level"] == 2 and not check_world(s3) and sw["state"] == 1 and so["state"] == 4 and \
+    ok = s3["level"] == NL - 1 and not check_world(s3) and sw["state"] == 1 and so["state"] == 4 and \
          s1["level"] == 0 and s1["state"] == 3 and ok24
     fails += not ok
-    print(f"6. 3. pálya kezdőképe {'OK' if not check_world(s3) else 'HIBA'}, megnyerése: állapot={sw['state']}, "
+    print(f"6. {NL}. (utolsó) pálya kezdőképe {'OK' if not check_world(s3) else 'HIBA'}, megnyerése: állapot={sw['state']}, "
           f"szóközre játék vége ({so['state']}), újabb szóközre pálya={s1['level'] + 1} állapot={s1['state']} "
           f"-> {'OK' if ok else 'HIBA'}")
 
-    # --- 7. a pályakezdéskor felépített térképek (CLASSBUF, BASEBUF) mindhárom pályán
+    # --- 7. a pályakezdéskor felépített térképek (CLASSBUF, BASEBUF) minden pályán
     import gen_game as GG
     for i, L in enumerate(G.LEVELS):
         sc = []

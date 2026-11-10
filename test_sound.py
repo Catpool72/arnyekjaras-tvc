@@ -44,28 +44,35 @@ def main():
         fails += not ok
         print(f"{label}: {'OK' if ok else 'HIBA'}")
 
+    import testlv as TL
+    import levels as LV
+    from test_game import seen_step
     start = [f"key 30 {ROW_SPACE} {BIT_SPACE}", f"key 32 {ROW_SPACE} 0"]
+    (fx, fy), fbit, p0 = TL.safe_package(0)
+    (gx, gy), gbit = TL.gate_approach(0)
 
     # indítás, lépés, csomag, mind a 3 csomag, zárt kapu
     pk = SYM["pkgs"]
+    rbit, _, _ = TL.safe_run(0)
     ev = run(start + [
-        f"key 50 {ROW_CUR} {BIT_RIGHT}", f"key 54 {ROW_CUR} 0",                       # lépés (a szignál után)
-        f"poke 60 {SYM['px']} 15", f"poke 60 {SYM['py']} 1", f"poke 60 {SYM['gacc']} 0",
-        f"key 62 {ROW_CUR} {BIT_RIGHT}", f"key 66 {ROW_CUR} 0",                       # (16,1): 1. csomag
+        f"key 50 {ROW_CUR} {rbit}", f"key 54 {ROW_CUR} 0",                            # lépés (a szignál után)
+        f"poke 60 {SYM['px']} {fx}", f"poke 60 {SYM['py']} {fy}", f"poke 60 {SYM['gacc']} 0",
+        f"key 62 {ROW_CUR} {fbit}", f"key 66 {ROW_CUR} 0",                            # 1. csomag
     ], 100)
     check("indítási szignál", has(ev, "INTRO", 30, 50))
     check("lépés", has(ev, "STEP", 50, 60))
     check("csomag felvétele", has(ev, "PKG", 62, 100))
     ev = run(start + [
-        f"poke 60 {pk + 5} 1", f"poke 60 {pk + 8} 1", f"poke 60 {SYM['got_n']} 2",   # a másik kettő megvan
-        f"poke 60 {SYM['px']} 15", f"poke 60 {SYM['py']} 1", f"poke 60 {SYM['gacc']} 0",
-        f"key 62 {ROW_CUR} {BIT_RIGHT}", f"key 66 {ROW_CUR} 0",
+        *[f"poke 60 {pk + 3 * j + 2} 1" for j in range(3) if tuple(LV.LEVELS[0]["pkg"][j]) != p0],
+        f"poke 60 {SYM['got_n']} 2",                                                     # a másik kettő megvan
+        f"poke 60 {SYM['px']} {fx}", f"poke 60 {SYM['py']} {fy}", f"poke 60 {SYM['gacc']} 0",
+        f"key 62 {ROW_CUR} {fbit}", f"key 66 {ROW_CUR} 0",
     ], 120)
     check("mind a 3 csomag", has(ev, "ALLGOT", 62, 120))
 
     ev = run(start + [
-        f"poke 40 {SYM['px']} 28", f"poke 40 {SYM['py']} 18", f"poke 40 {SYM['gacc']} 0",
-        f"key 42 {ROW_CUR} {BIT_DOWN}", f"key 46 {ROW_CUR} 0"], 80)
+        f"poke 40 {SYM['px']} {gx}", f"poke 40 {SYM['py']} {gy}", f"poke 40 {SYM['gacc']} 0",
+        f"key 42 {ROW_CUR} {gbit}", f"key 46 {ROW_CUR} 0"], 80)
     check("zárt kapu", has(ev, "LOCKED", 42, 80))
 
     # harang 8:00-kor és dupla harang 17:00-kor (az órát előretekerjük)
@@ -85,13 +92,14 @@ def main():
     check(f"ketyegés várakozáskor ({ticks} db)", ticks >= 5)
 
     # lebukás (a test_game 3. esetének helyzete) és győzelem
-    ev = run(start + [f"poke 41 {SYM['px']} 18", f"poke 41 {SYM['py']} 2", f"poke 41 {SYM['gacc']} 0",
-                      f"key 42 {ROW_CUR} {BIT_DOWN}", f"key 46 {ROW_CUR} 0"], 100)
+    (lx, ly), lbit, _ = seen_step()
+    ev = run(start + [f"poke 41 {SYM['px']} {lx}", f"poke 41 {SYM['py']} {ly}", f"poke 41 {SYM['gacc']} 0",
+                      f"key 42 {ROW_CUR} {lbit}", f"key 46 {ROW_CUR} 0"], 100)
     check("lebukás", has(ev, "CAUGHT", 42, 100))
     ev = run(start + [f"poke 40 {pk + 2} 1", f"poke 40 {pk + 5} 1", f"poke 40 {pk + 8} 1",
                       f"poke 40 {SYM['allgot']} 1", f"poke 40 {SYM['got_n']} 3",
-                      f"poke 40 {SYM['px']} 28", f"poke 40 {SYM['py']} 18", f"poke 40 {SYM['gacc']} 0",
-                      f"key 42 {ROW_CUR} {BIT_DOWN}", f"key 46 {ROW_CUR} 0"], 120)
+                      f"poke 40 {SYM['px']} {gx}", f"poke 40 {SYM['py']} {gy}", f"poke 40 {SYM['gacc']} 0",
+                      f"key 42 {ROW_CUR} {gbit}", f"key 46 {ROW_CUR} 0"], 120)
     check("győzelmi fanfár", has(ev, "WIN", 42, 120))
 
     print("MINDEN HANGTESZT RENDBEN" if not fails else f"{fails} HIBA")
