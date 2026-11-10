@@ -1,5 +1,5 @@
 ;=============================================================================
-; ÁRNYÉKJÁRÁS  –  Videoton TV-Computer 64K, 16 színű mód (128x240)   v06
+; ÁRNYÉKJÁRÁS  –  Videoton TV-Computer 64K, 16 színű mód (128x240)   v08
 ; Z80 @ 3.125 MHz, sjasmplus.  Indítás: 10 PRINT USR(6659), automatikusan.
 ;
 ; Memória (lapozás $90 = U0 | U1 | VID | U3):
@@ -66,6 +66,7 @@ ST_WON      equ 1
 ST_LOST     equ 2
 ST_INTRO    equ 3
 ST_OVER     equ 4
+ST_TITLE    equ 5
 
 ; pontozás (solver.py-vel egyezően)
 PTS_PKG     equ 100             ; csomagonként
@@ -114,7 +115,76 @@ new_game:
         ld (completed),a
         ld a,LIVES
         ld (lives),a
-        jp level_intro
+        call snd_stop
+        call show_title
+        ld a,ST_TITLE
+        ld (state),a
+        jp main_loop
+
+;-----------------------------------------------------------------------------
+; CÍMKÉP: a tömörített kép kibontása a képernyőre, alul rekord és SZOKOZ
+;-----------------------------------------------------------------------------
+show_title:
+        ld hl,TITLE_RLE
+        ld de,VRAM
+        ld bc,TITLE_RAW
+        call unrle
+        ld a,15
+        call set_ink
+        ld de,score_buf+2       ; "REKORD:nnnnnnn"
+        ld hl,hiscore
+        call num7
+        ld hl,txt_rekord
+        ld de,VRAM+TITLE_TXT*64+2
+        call print_str
+        ld hl,score_buf+2
+        call print_str
+        ld a,14
+        call set_ink
+        ld hl,txt_szokoz
+        ld de,VRAM+TITLE_TXT*64+50
+        jp print_str
+
+; unrle: HL = tömörített adat, DE = cél, BC = kibontott hossz
+;   n < 128: n+1 nyers bájt; n >= 128: a következő bájt (n-125)-ször (3..130)
+unrle:
+        ld (ur_left),bc
+.loop:  ld bc,(ur_left)
+        ld a,b
+        or c
+        ret z
+        ld a,(hl)
+        inc hl
+        cp 128
+        jr nc,.run
+        inc a                   ; nyers: 1..128 bájt
+        ld c,a
+        ld b,0
+        call .dec
+        ldir
+        jr .loop
+.run:   sub 125                 ; ismétlés: 3..130 bájt
+        ld c,a
+        ld b,0
+        call .dec
+        ld a,(hl)
+        inc hl
+        push hl
+        ld h,d
+        ld l,e
+        ld (hl),a
+        inc de
+        dec c
+        ldir                    ; önmagára másolva tölti ki
+        pop hl
+        jr .loop
+.dec:   push hl                 ; ur_left -= BC
+        ld hl,(ur_left)
+        or a
+        sbc hl,bc
+        ld (ur_left),hl
+        pop hl
+        ret
 
 ;=============================================================================
 ; PÁLYAKEZDÉS
@@ -418,6 +488,12 @@ main_loop:
         and K_WAIT
         jr z,main_loop
         ld a,(state)
+        cp ST_TITLE
+        jr nz,.nottitle
+        xor a
+        ld (level),a
+        jp level_intro
+.nottitle:
         cp ST_INTRO
         jr nz,.notintro
         xor a
@@ -1610,6 +1686,8 @@ score_buf:  db "P:0000000",0
 lives_buf:  db "ELET:3",0
 
 txt_space:  db " - SZOKOZ",0
+txt_rekord: db "REKORD:",0
+txt_szokoz: db "SZOKOZ",0
 txt_sun:    db "NAPON - VIGYAZZ!",0
 txt_shade:  db "ARNYEKBAN",0
 txt_cloud:  db "FELHO ALATT",0
@@ -1788,6 +1866,8 @@ ShadowRowHook equ snd_poll
         include "suntab.inc"
         include "vistab.inc"
         include "game.inc"
+        include "title.inc"
+TITLE_TXT   equ 229             ; a címkép alsó fekete sávjában a szöveg sora
 
 IMAGE_END:
         ASSERT IMAGE_END <= $8000
@@ -1851,6 +1931,7 @@ snd_ptr     ds 2
 snd_cnt     ds 1
 snd_pri     ds 1
 skipfr      ds 1
+ur_left     ds 2
 npkg        ds 1
 pkgs        ds 3*3
 ncloud      ds 1

@@ -1,10 +1,12 @@
-# ÁRNYÉKJÁRÁS – Videoton TVC 64K (v07)
+# ÁRNYÉKJÁRÁS – Videoton TVC 64K (v08)
 
 Saját játék, nem átirat. Lopakodás egy városban, ahol csak az árnyék véd: a nap keletről nyugatra halad, és az épületek, fák és a városfal árnyéka folyamatosan fordul és változik a hossza. Pályánként 3 csomagot kell kapuzárás (18:00) előtt kicsempészni. Az őrök csak a napon látnak meg. 16 pálya, fokozatosan nehezedve.
 
 16 színű mód (128×240), Z80 gépi kód, `10 PRINT USR(6659)` BASIC betöltővel, automatikus indítással. Kész fájl: `dist/arnyek.cas`.
 
-![Indulás](docs/indulas.png)
+![Címkép](docs/cimkep.png)
+
+![Az 1. pálya](docs/indulas.png)
 
 ## Irányítás
 
@@ -69,11 +71,20 @@ Pálya végén: **(csomagok × 100 + a kapuzárásig hátralévő játékpercek 
 
 - Az árnyékbónusz 300 pont, ami minden napos mezőre tett lépéssel 10 ponttal csökken (legfeljebb 0-ig). Egy lépés akkor napos, ha a lépés pillanatában napos mezőre visz. Egy napos lépés 2 játékperc időbónuszt ér, ezért a gyorsaság és az árnyékban maradás valódi döntés.
 - 3 élet. Lebukáskor vagy kapuzáráskor elvész egy, és a pálya újrakezdődik. A pontok csak a sikeres pályák után járnak, így a megszerzett pontok megmaradnak.
-- Ha elfogynak az életek: JATEK VEGE; ha az utolsó pálya is kész: GRATULALOK; új rekordnál mindkét esetben UJ REKORD. Szóközre új játék. A rekord a munkamenetre szól, mint a BLOKK 3D-ben.
+- Ha elfogynak az életek: JATEK VEGE; ha az utolsó pálya is kész: GRATULALOK; új rekordnál mindkét esetben UJ REKORD. Szóközre vissza a címképre, ahol a rekord is látszik. A rekord a munkamenetre szól, mint a BLOKK 3D-ben.
 - A pontszám, a rekord és a pályánkénti pont 24 bites (legfeljebb 16 777 215), így a pályaszorzóval kb. 88 pályáig akkor sem telik be, ha minden pályán az elméleti maximumot (4200 alappont) éred el.
 - Kijelző: `07:00 P:0000000 ELET:3 CS:0/3`. Az utolsó élet piros, pálya végén az állapotsorban az összesítő látszik (`KIJUTOTTAL! +06100`).
 
 A `python3 solver.py --pont` pályánként kiszámolja a legjobb elérhető pontszámot is (lassú: nehéz pályánként több perc).
+
+## Címkép
+
+A játék a címképpel indul (alul a munkamenet rekordja és SZOKOZ), szóközre jön az 1. pálya.
+
+- A kép ChatGPT-vel készült a `docs/betoltokep-prompt.md` promptjával, két változatban: `docs/betoltokep_a.png` (sík színek, ez van a játékban) és `docs/betoltokep_b.png` (raszterrel).
+- `conv_title.py`: a képet 4:3-ra vágja, 128×240-re kicsinyíti úgy, hogy célképpontonként a leggyakoribb TVC-szín marad (nincs színkeverés), a felső sávba ráírja az ÁRNYÉKJÁRÁS címet (sötétkék betűk, sötétsárga árnyékkal), kézzel javítja a toronyórát (128 képpont szélesen vigyorgó arcnak látszott), és RLE-vel tömöríti: 15 360 bájtról 7554 bájtra.
+- A program `unrle` rutinja közvetlenül a képernyőmemóriába bontja ki.
+- A másik változatra váltás: a `build.sh`-ban `betoltokep_a.png` helyett `betoltokep_b.png` (8370 bájt tömörítve).
 
 ## Képernyő
 
@@ -123,7 +134,7 @@ db  felhők száma, majd (dw alak, db y, dw x 8.8)*     ; az alakok közösek
 db  őrök száma, majd (körbejár?, pontok száma, (x, y)*)*
 ```
 
-A program a `$8000` alatt 14 259 bájtot hagy szabadon, ebbe még kb. 60–90 pálya fér (a mérettől függően). Ha betöltőkép is kerül a játékba, annak tömörítve ebből kell helyet kapnia.
+A program a címképpel együtt 19,1 KB, a `$8000` alatt 6552 bájtot hagy szabadon. Ebbe még kb. 20–40 pálya fér (a mérettől függően).
 
 Minden pálya egy helyen van: `levels.py` (a lista sorrendje a játék sorrendje, a sorszámot a generátor írja a név elé). Új pálya felvétele vagy módosítása után:
 
@@ -136,14 +147,14 @@ python3 gen_demo.py ../arnyekjaras.html    # a böngészős demó pályái
 
 ## Memória (lapozás `$90` = U0 | U1 | VID | U3, mint a BLOKK 3D-ben)
 
-- `$19EF–` BASIC betöltő, kód, táblák (11,6 KB, `IMAGE_END` < `$8000`)
+- `$19EF–` BASIC betöltő, kód, táblák, tömörített címkép (19,1 KB, `IMAGE_END` < `$8000`)
 - `$8000–$BBFF` képernyő
 - `$C000` árnyékpuffer (64×38), `$CA00` takarási térkép, `$D400` csempe-alap, `$D700` kívánt csempék, `$DA00` kirajzolt csempék, `$DD00` változók, `$E000` árnyékosztály-térkép, verem az U3 tetején
 
 ## Fordítás
 
 ```
-./build.sh        # gen_tables.py + gen_game.py -> arnyek.asm (sjasmplus) -> arnyek.cas
+./build.sh        # gen_tables.py + gen_game.py + conv_title.py -> arnyek.asm (sjasmplus) -> arnyek.cas
 ```
 
 Kell hozzá Python 3 és sjasmplus (`SJASMPLUS=/út/sjasmplus ./build.sh`). A CAS-csomagoló (`mkcas.py`) a BLOKK 3D-é, változatlanul.
@@ -158,7 +169,8 @@ python3 test_asm.py      # shadow.asm + vision.asm a z80sim-ben: 5292 eset, cikl
 python3 test_game.py     # a kész CAS a tvcsim-ben: árnyék/látómező 31 időpontban,
                          # mozgás, lebukás, kapuzárás, győzelem, pályaváltások,
                          # a felépített térképek mind a 16 pályán,
-                         # életek, játék vége, rekord, új játék
+                         # életek, játék vége, rekord, új játék,
+                         # a kibontott címkép bájtra egyezik a konverterével
 python3 test_sound.py    # SNDLOG alapján: mind a 11 effekt a várt eseménynél szól
 python3 solver.py        # leggyorsabb győztes út pályánként és annak pontszáma
 python3 solver.py --pont # + a legjobb elérhető pontszám (lassú, kb. 4 perc)
@@ -166,7 +178,7 @@ python3 test_replay.py   # a megoldó útja a kész CAS-on: mind a 16 pályán k
                          # és a TVC pontszáma egyezik a modellével
 ```
 
-A tesztek a koordinátákat a pályaadatokból számolják (`testlv.py`), így bármilyen pályasorrendre érvényesek.
+A tesztek a koordinátákat a pályaadatokból számolják (`testlv.py`), így bármilyen pályasorrendre érvényesek. A címképről a tesztkörnyezet automatikusan továbblép (`skip_title`), és minden eseményt ennyivel később futtat.
 
 A `harness/tvcsim.c` a BLOKK 3D tesztkörnyezete három kiegészítéssel:
 - 16 színű képmentés, az ep128emu színeivel;
@@ -185,6 +197,7 @@ A `harness/tvcsim.c` a BLOKK 3D tesztkörnyezete három kiegészítéssel:
 - `design.py` – pályaellenőrzés, ASCII-térkép, nehézségi mérőszámok
 - `gen_levels.py`, `design_search.py`, `design_select.py` – pályajelöltek generálása, mérése és kiválasztása
 - `gen_demo.py` – a böngészős demó pályáinak frissítése
+- `conv_title.py` – a címkép átalakítása (TVC-paletta, 128×240, cím, RLE)
 - `testlv.py` – pályafüggetlen segédek a tesztekhez
 - `docs/betoltokep-prompt.md` – prompt a betöltőképhez (ChatGPT), a TVC palettájával
 
@@ -197,6 +210,7 @@ A `harness/tvcsim.c` a BLOKK 3D tesztkörnyezete három kiegészítéssel:
 
 ## Változások
 
+- v08: címkép (ChatGPT-vel készült, `conv_title.py` alakítja át, RLE-vel tömörítve), rajta a munkamenet rekordja; játék vége után a címképre tér vissza.
 - v07: 16 pálya, fokozatosan nehezedve (13 új, a régi hármat a nehézségük szerint besorolva); legfeljebb 6 őr pályánként. A pályák egy helyen, a `levels.py`-ban. Új eszközök: nehézségmérés, pályagenerátor, kiválasztás. Javítva: a városfal 8-as színnel (az emulátorban fekete) volt rajzolva, most szürke; a tesztkörnyezet színei az ep128emu-hoz igazítva. A tesztek pályafüggetlenek, a végigjátszás mind a 16 pályán fut. Betöltőkép-prompt a `docs/` mappában.
 - v06: 24 bites pontszám, rekord és pályapont, 7 számjegy (`P:0000000`); végigjátszás után GRATULALOK. A teszt a 65 535 fölötti összeadást és rekordot is ellenőrzi.
 - v05: pontozás (csomag, időbónusz, fokozatos árnyékbónusz, pályaszorzó), 3 élet, játék vége, munkamenet-rekord; „+” a fontban. Javítva: kapuzáráskor 18:09-et mutatott az óra; a napszak-sáv jele csonkokat hagyott.

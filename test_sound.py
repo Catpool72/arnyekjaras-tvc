@@ -7,6 +7,9 @@ from test_game import SYM, SIM, CAS, HERE, ROW_SPACE, BIT_SPACE, ROW_CUR, BIT_RI
 
 
 def run(script, frames):
+    import testlv as TL
+    D = TL.TITLE_SHIFT
+    script, frames = TL.skip_title(script), frames + D
     path = os.path.join(HERE, "_t.txt")
     open(path, "w").write("\n".join(script) + "\n")
     env = dict(os.environ, SNDLOG="1")
@@ -16,7 +19,7 @@ def run(script, frames):
     for line in out.stderr.splitlines():
         m = re.match(r"snd f(\d+) (ON |off) (\d+)Hz vol(\d+)", line)
         if m and m.group(2) == "ON ":
-            ev.append((int(m.group(1)), int(m.group(3)), int(m.group(4))))
+            ev.append((int(m.group(1)) - D, int(m.group(3)), int(m.group(4))))
     return ev
 
 

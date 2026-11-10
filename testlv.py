@@ -67,3 +67,19 @@ def safe_package(i, frames=800):
                 continue
             return f, bit, p
     raise ValueError("nincs biztonságos csomag")
+
+
+TITLE_SHIFT = 60     # ennyi képkocka/kör kell a címképről a pályabevezetőig
+
+
+def skip_title(script):
+    """A játék a címképpel indul: szóköz a 2. és 20. képkocka (kör) között, majd minden
+    eseményt TITLE_SHIFT-tel később futtat. Így a tesztek forgatókönyvei a címkép előtti
+    időzítéssel írhatók; a kiolvasott adatok kulcsából a hívó vonja le az eltolást."""
+    out = ["key 2 7 32", "key 20 7 0"]
+    for line in script:
+        p = line.split()
+        if p and p[0] in ("key", "poke", "dump", "shot"):
+            p[1] = str(int(p[1]) + TITLE_SHIFT)
+        out.append(" ".join(p))
+    return out

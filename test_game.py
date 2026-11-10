@@ -33,7 +33,12 @@ ROW_SPACE, BIT_SPACE = 7, 0x20
 ROW_CUR, BIT_RIGHT, BIT_DOWN = 8, 0x20, 0x04
 
 
-def run(script, frames, iters=False):
+def run(script, frames, iters=False, title=False):
+    """title=True: nem lép tovább a címképről (a címkép tesztjéhez)."""
+    import testlv as TL
+    D = 0 if title else TL.TITLE_SHIFT
+    if not title:
+        script, frames = TL.skip_title(script), frames + D
     path = os.path.join(HERE, "_t.txt")
     open(path, "w").write("\n".join(script) + "\n")
     env = dict(os.environ, HOOK=str(SYM["vsync"]))
@@ -48,7 +53,7 @@ def run(script, frames, iters=False):
         m = re.match(r"dump f(\d+) ([0-9A-F]{4}): (.*)", line)
         if m:
             data = bytes.fromhex(m.group(3).replace(" ", ""))
-            dumps[(int(m.group(1)), int(m.group(2), 16))] = data
+            dumps[(int(m.group(1)) - D, int(m.group(2), 16))] = data
     return dumps
 
 
@@ -210,10 +215,10 @@ def main():
     ok24 = sc == 65000 + lp and sc > 65535 and hs == sc
     print(f"   24 bites pontszám: 65000 + {lp} = {sc}, rekord {hs} -> {'OK' if ok24 else 'HIBA'}")
     ok = s3["level"] == NL - 1 and not check_world(s3) and sw["state"] == 1 and so["state"] == 4 and \
-         s1["level"] == 0 and s1["state"] == 3 and ok24
+         s1["level"] == 0 and s1["state"] == 5 and ok24
     fails += not ok
     print(f"6. {NL}. (utolsó) pálya kezdőképe {'OK' if not check_world(s3) else 'HIBA'}, megnyerése: állapot={sw['state']}, "
-          f"szóközre játék vége ({so['state']}), újabb szóközre pálya={s1['level'] + 1} állapot={s1['state']} "
+          f"szóközre játék vége ({so['state']}), újabb szóközre címkép: pálya={s1['level'] + 1} állapot={s1['state']} "
           f"-> {'OK' if ok else 'HIBA'}")
 
     # --- 7. a pályakezdéskor felépített térképek (CLASSBUF, BASEBUF) minden pályán
@@ -251,11 +256,25 @@ def main():
     l1, l2 = d[(55, SYM["lives"])][0], d[(125, SYM["lives"])][0]
     so, sn = state_at(d, 200), state_at(d, 260)
     ok = (l1, l2) == (2, 1) and so["state"] == 4 and w(200, "hiscore") == 1234 and \
-         sn["state"] == 3 and sn["level"] == 0 and w(260, "score") == 0 and d[(260, SYM["lives"])][0] == 3 and \
+         sn["state"] == 5 and sn["level"] == 0 and w(260, "score") == 0 and d[(260, SYM["lives"])][0] == 3 and \
          w(260, "hiscore") == 1234
     fails += not ok
     print(f"8. életek {l1},{l2}, játék vége: állapot={so['state']}, rekord={w(200, 'hiscore')}; új játék: "
           f"pálya={sn['level'] + 1} pont={w(260, 'score')} élet={d[(260, SYM['lives'])][0]} -> {'OK' if ok else 'HIBA'}")
+
+    # --- 9. címkép: a kibontott kép bájtra egyezik a konverterével, alul REKORD és SZOKOZ
+    import conv_title as CT
+    from PIL import Image
+    want = CT.to_bytes(CT.compose(Image.open(os.path.join(HERE, "docs", "betoltokep_a.png"))))
+    rows = 240 - CT.BAND
+    sc = [f"dump 30 {0x8000 + y * 64} 64" for y in range(240)] + ["shot 30 title.ppm"]
+    d = run(sc, 32, title=True)
+    got = b"".join(d[(30, 0x8000 + y * 64)] for y in range(240))
+    ok_img = got[:rows * 64] == want[:rows * 64]
+    ok_txt = any(got[rows * 64:]) and got[rows * 64:rows * 64 + 64] == bytes(64)
+    ok = ok_img and ok_txt
+    fails += not ok
+    print(f"9. címkép: kép {'OK' if ok_img else 'HIBA'}, szövegsáv {'OK' if ok_txt else 'HIBA'}")
 
     print("MINDEN TESZT RENDBEN" if not fails else f"{fails} HIBA")
     return fails == 0
