@@ -13,6 +13,7 @@
         DEVICE NOSLOT64K
 
 VRAM        equ $8000
+QSAVE       equ $7C00           ; az Esc-kérdés alatti sor mentése (szabad RAM)
 P_SAVE      equ $0003
 PORT03      equ $0B11           ; ROM-másolatok a kilépéshez
 PORT05      equ $0B12
@@ -479,7 +480,7 @@ main_loop:
         call read_keys
         ld a,(knew+1)
         and K_ESC
-        jp nz,quit
+        call nz,ask_quit        ; Esc: rákérdez; igen esetén nem tér vissza
         ld a,(state)
         cp ST_PLAY
         jr z,.play
@@ -1701,6 +1702,7 @@ txt_congrats: db "GRATULALOK! ",0
 txt_plus:   db " +",0
 txt_over:   db "JATEK VEGE! ",0
 txt_record: db "UJ REKORD! ",0
+txt_quit:   db "KILEPSZ? ESC=IGEN, MAS=NEM",0
 
 ;=============================================================================
 ; RENDSZER: képkocka, billentyűzet, kilépés (a BLOKK 3D-ből)
@@ -1747,6 +1749,60 @@ read_keys:
         ld a,h : cpl : and d : ld (knew+1),a
         ret
 
+;-----------------------------------------------------------------------------
+; ask_quit: Esc után megerősítés. A szöveg sorát elmenti, kiírja a kérdést,
+; és vár: újabb Esc = kilépés, bármely más billentyű = vissza a játékba
+; (a sor visszaáll, az idő közben nem telik).
+ask_quit:
+        call snd_stop
+        ld hl,VRAM+HUD_Y2*64
+        ld a,(state)
+        cp ST_TITLE
+        jr nz,.row
+        ld hl,VRAM+TITLE_TXT*64
+.row:   ld (aq_row),hl
+        ld de,QSAVE
+        ld bc,64*10
+        ldir
+        ld hl,(aq_row)
+        ld d,h : ld e,l : inc de
+        ld bc,64*10-1
+        ld (hl),0
+        ldir
+        ld a,15
+        call set_ink
+        ld hl,txt_quit
+        ld de,(aq_row)
+        call print_str
+        call aq_release
+.wait:  call vsync
+        call read_keys
+        ld hl,(knew)
+        ld a,h
+        and K_ESC
+        jp nz,quit
+        ld a,h
+        or l
+        jr z,.wait
+        call aq_release
+        ld hl,QSAVE
+        ld de,(aq_row)
+        ld bc,64*10
+        ldir
+        xor a
+        ld (skipfr),a           ; a várakozás képkockáit nem pótoljuk
+        ld (knew),a
+        ld (knew+1),a
+        ret
+aq_release:                     ; vár, amíg minden billentyűt elengednek
+        call vsync
+        call read_keys
+        ld hl,(keys)
+        ld a,h
+        or l
+        jr nz,aq_release
+        ret
+
 quit:
         call snd_stop
 .rel:   call vsync
@@ -1755,6 +1811,11 @@ quit:
         ld a,h
         or l
         jr nz,.rel
+        ld hl,VRAM              ; a játék képe ne maradjon a BASIC alatt
+        ld de,VRAM+1
+        ld bc,$3FFF
+        ld (hl),0
+        ldir
         ld a,$70
         ld (P_SAVE),a
         out ($02),a
@@ -1927,6 +1988,7 @@ lives       ds 1
 litsteps    ds 1
 hud_sc      ds 1
 msgbuf      ds 34
+aq_row      ds 2
 snd_ptr     ds 2
 snd_cnt     ds 1
 snd_pri     ds 1

@@ -106,7 +106,7 @@ static void shot(const char *name) {
     fclose(f);
 }
 
-static int hook = -1, pend[256], npend, itermode, iter;
+static int hook = -1, pend[256], npend, itermode, iter, watchdog, last_hook;
 static void do_dumps(int frame) {
     for (int i = 0; i < npk; i++) if (pks[i].frame == frame && pks[i].dump) {
         printf("dump f%d %04X:", frame, pks[i].addr);
@@ -119,6 +119,7 @@ static void do_dumps(int frame) {
 int main(int argc, char **argv) {
     if (getenv("HOOK")) hook = (int)strtol(getenv("HOOK"), NULL, 0);
     itermode = hook >= 0 && getenv("ITER") != NULL;
+    if (getenv("WATCHDOG")) watchdog = atoi(getenv("WATCHDOG"));
     if (argc < 4) { fprintf(stderr, "usage: tvcsim file.cas script.txt frames\n"); return 1; }
     FILE *f = fopen(argv[1], "rb");
     static uint8_t buf[65536]; size_t n = fread(buf, 1, sizeof buf, f); fclose(f);
@@ -164,6 +165,21 @@ int main(int argc, char **argv) {
                 if (hook >= 0) { if (npend < 256) pend[npend++] = frame; }
                 else do_dumps(frame);
             }
+        }
+        // WATCHDOG=N: kifagyás (N képkockán át nincs HOOK) és veremszivárgás (más SP a HOOK-nál)
+        if (hook >= 0 && cpu.pc == hook) {
+            static int sp0 = -1, spwarn = 0;
+            if (sp0 < 0) sp0 = cpu.sp;
+            else if (cpu.sp != sp0 && spwarn < 5) {
+                fprintf(stderr, "STACK: SP=%04X a vsync-nél (az első körben %04X), %d. képkocka\n", cpu.sp, sp0, frame);
+                spwarn++;
+            }
+            last_hook = frame;
+        }
+        if (watchdog > 0 && hook >= 0 && frame - last_hook > watchdog) {
+            fprintf(stderr, "HANG: %d képkockája nincs vsync, PC=%04X SP=%04X, %d. képkocka\n",
+                    watchdog, cpu.pc, cpu.sp, frame);
+            return 3;
         }
         // ITER=1: minden esemény a főciklus köreihez kötve (HOOK-találatonként egy kör)
         if (itermode && cpu.pc == hook) {

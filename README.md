@@ -1,4 +1,4 @@
-# ÁRNYÉKJÁRÁS – Videoton TVC 64K (v08)
+# ÁRNYÉKJÁRÁS – Videoton TVC 64K (v09)
 
 Saját játék, nem átirat. Lopakodás egy városban, ahol csak az árnyék véd: a nap keletről nyugatra halad, és az épületek, fák és a városfal árnyéka folyamatosan fordul és változik a hossza. Pályánként 3 csomagot kell kapuzárás (18:00) előtt kicsempészni. Az őrök csak a napon látnak meg. 16 pálya, fokozatosan nehezedve.
 
@@ -14,7 +14,7 @@ Saját játék, nem átirat. Lopakodás egy városban, ahol csak az árnyék vé
 |---|---|
 | Kurzorok / joystick | lépés (nyomva tartva ismétel) |
 | Szóköz / Tűz | indítás, továbblépés; játék közben nyomva tartva várakozás (8× gyorsabb idő) |
-| Esc | kilépés a BASIC-be |
+| Esc | kilépés a BASIC-be – rákérdez: még egy Esc = kilépés, bármely más billentyű = folytatás |
 
 ## Játékszabályok
 
@@ -141,7 +141,7 @@ Minden pálya egy helyen van: `levels.py` (a lista sorrendje a játék sorrendje
 ```
 python3 design.py 17 -m    # ellenőrzés, ASCII-térkép, nehézség (itt a 17. pályára)
 ./build.sh
-python3 test_game.py && python3 test_replay.py
+python3 test_game.py && python3 test_quit.py && python3 test_replay.py
 python3 gen_demo.py ../arnyekjaras.html    # a böngészős demó pályái
 ```
 
@@ -211,6 +211,7 @@ A `harness/tvcsim.c` a BLOKK 3D tesztkörnyezete három kiegészítéssel:
 ## Változások
 
 - v08: címkép (ChatGPT-vel készült, `conv_title.py` alakítja át, RLE-vel tömörítve), rajta a munkamenet rekordja; játék vége után a címképre tér vissza.
+- v09: az Esc nem lép ki azonnal: az állapotsorban rákérdez (közben áll az idő), egy véletlen Esc nem szakítja meg a játékot. Kilépéskor a játék törli a képernyőt, így a BASIC nem a megállt játékkép alatt fut tovább (ez nézett ki kifagyásnak). `test_quit.py`; a tvcsim `WATCHDOG=N` kapcsolója kifagyást és veremszivárgást figyel.
 - v07: 16 pálya, fokozatosan nehezedve (13 új, a régi hármat a nehézségük szerint besorolva); legfeljebb 6 őr pályánként. A pályák egy helyen, a `levels.py`-ban. Új eszközök: nehézségmérés, pályagenerátor, kiválasztás. Javítva: a városfal 8-as színnel (az emulátorban fekete) volt rajzolva, most szürke; a tesztkörnyezet színei az ep128emu-hoz igazítva. A tesztek pályafüggetlenek, a végigjátszás mind a 16 pályán fut. Betöltőkép-prompt a `docs/` mappában.
 - v06: 24 bites pontszám, rekord és pályapont, 7 számjegy (`P:0000000`); végigjátszás után GRATULALOK. A teszt a 65 535 fölötti összeadást és rekordot is ellenőrzi.
 - v05: pontozás (csomag, időbónusz, fokozatos árnyékbónusz, pályaszorzó), 3 élet, játék vége, munkamenet-rekord; „+” a fontban. Javítva: kapuzáráskor 18:09-et mutatott az óra; a napszak-sáv jele csonkokat hagyott.
